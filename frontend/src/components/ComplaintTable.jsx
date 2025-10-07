@@ -8,7 +8,7 @@ import {
   TableRow,
 } from '@/components/ui/Table';
 import { Badge } from '@/components/ui/Badge';
-import { Eye } from 'lucide-react';
+import { Eye, UserPlus } from 'lucide-react';
 import { Button } from './ui/Button';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -151,12 +151,25 @@ const ComplaintTable = ({ filter, limit }) => {
                   {new Date(complaint.createdAt).toLocaleDateString()}
                 </TableCell>
                 <TableCell className="text-right">
-                  <Link to={(user?.slug ? `/${user.slug}` : '') + `/complaints/${complaint._id}`}>
-                    <Button variant="outline" size="sm" className="rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/20">
-                      <Eye className="h-4 w-4 mr-1" />
-                      <span>View</span>
-                    </Button>
-                  </Link>
+                  <div className="flex gap-2 justify-end">
+                    <Link to={(user?.slug ? `/${user.slug}` : '') + `/complaints/${complaint._id}`}>
+                      <Button variant="outline" size="sm" className="rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/20">
+                        <Eye className="h-4 w-4 mr-1" />
+                        <span>View</span>
+                      </Button>
+                    </Link>
+                    {user?.role === 'staff' && !complaint.workerId && (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        className="rounded-xl"
+                        onClick={() => navigate(`/${user.department?.slug}/staff/complaints/${complaint._id}/assign`)}
+                      >
+                        <UserPlus className="h-4 w-4 mr-1" />
+                        <span>Assign</span>
+                      </Button>
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             ))

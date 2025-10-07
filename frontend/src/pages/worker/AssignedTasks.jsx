@@ -97,17 +97,20 @@ const AssignedTasks = () => {
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">My Assigned Tasks</h1>
+        <div>
+          <h1 className="text-3xl font-bold">My Field Assignments</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">View all your assigned field work tasks</p>
+        </div>
         <Button onClick={() => navigate('/worker')}>
           Back to Dashboard
         </Button>
       </div>
 
-      {/* Stats Cards - Now using live stats from the hook */}
+      {/* Performance Stats Cards */}
       <div className="grid gap-6 md:grid-cols-4">
         <Card className="kpi-card-solid">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">Total Tasks</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-500">Total Assignments</CardTitle>
             <AlertCircle className="h-5 w-5 text-blue-500" />
           </CardHeader>
           <CardContent>
@@ -116,7 +119,7 @@ const AssignedTasks = () => {
         </Card>
         <Card className="kpi-card-solid">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">In Progress</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-500">Active Work</CardTitle>
             <Clock className="h-5 w-5 text-orange-500" />
           </CardHeader>
           <CardContent>
@@ -125,7 +128,7 @@ const AssignedTasks = () => {
         </Card>
         <Card className="kpi-card-solid">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">Completed</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-500">Total Resolved</CardTitle>
             <CheckCircle className="h-5 w-5 text-green-500" />
           </CardHeader>
           <CardContent>
@@ -134,8 +137,8 @@ const AssignedTasks = () => {
         </Card>
          <Card className="kpi-card-solid">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">Completed Today</CardTitle>
-            <CheckCircle className="h-5 w-5 text-green-500" />
+            <CardTitle className="text-sm font-medium text-gray-500">Resolved Today</CardTitle>
+            <CheckCircle className="h-5 w-5 text-green-600" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{stats.completedToday}</div>
@@ -156,7 +159,7 @@ const AssignedTasks = () => {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <Input
-                placeholder="Search tasks..."
+                placeholder="Search assignments..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -205,17 +208,20 @@ const AssignedTasks = () => {
           <Card className="glass-card">
             <CardContent className="flex flex-col items-center justify-center py-12">
               <div className="text-center">
-                <h3 className="text-lg font-semibold mb-2">No tasks found</h3>
-                <p className="text-gray-600">No tasks match your current filters. Great job!</p>
+                <h3 className="text-lg font-semibold mb-2">No assignments found</h3>
+                <p className="text-gray-600">No assignments match your current filters.</p>
               </div>
             </CardContent>
           </Card>
         ) : (
           filteredComplaints.map((complaint) => (
-            <Card key={complaint._id} className="glass-card">
+            <Card key={complaint._id} className="glass-card hover:shadow-lg transition-shadow">
               <CardHeader>
                 <div className="flex justify-between items-start">
-                  <CardTitle className="text-xl">{complaint.title}</CardTitle>
+                  <div>
+                    <CardTitle className="text-xl">{complaint.title}</CardTitle>
+                    <p className="text-sm text-gray-500 mt-1">Field Location: {complaint.location}</p>
+                  </div>
                   <div className="flex gap-2">
                     <Badge variant={getStatusVariant(complaint.status)}>{complaint.status}</Badge>
                     <Badge variant="outline" className={getPriorityColor(complaint.priority)}>{complaint.priority}</Badge>
@@ -225,20 +231,21 @@ const AssignedTasks = () => {
               <CardContent>
                 <div className="space-y-4">
                   <p className="text-gray-600 dark:text-gray-400">{complaint.description}</p>
-                  <div className="grid md:grid-cols-2 gap-4 text-sm">
-                    <p><strong>Location:</strong> {complaint.location}</p>
+                  <div className="grid md:grid-cols-2 gap-4 text-sm bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
                     <p><strong>Category:</strong> {complaint.category}</p>
-                    <p><strong>Citizen:</strong> {complaint.citizenId?.name || 'N/A'}</p>
-                    <p><strong>Assigned:</strong> {formatDate(complaint.assignedDate)}</p>
+                    <p><strong>Department:</strong> {complaint.department?.name || 'N/A'}</p>
+                    <p><strong>Citizen Contact:</strong> {complaint.citizenId?.name || 'N/A'}</p>
+                    <p><strong>Date Assigned:</strong> {formatDate(complaint.createdAt)}</p>
                   </div>
                   <div className="flex gap-2 pt-4 border-t">
-                    <Button 
-                      variant="default" 
+                    <Button
+                      variant="default"
                       size="sm"
                       onClick={() => navigate(`/worker/tasks/${complaint._id}`)}
+                      className="flex-1"
                     >
                       <Eye className="w-4 h-4 mr-2" />
-                      View & Update Progress
+                      View Details & Update
                     </Button>
                   </div>
                 </div>

@@ -17,14 +17,13 @@ const navItems = {
     { name: 'Dashboard', icon: Home, path: '/staff' },
     { name: 'Complaints', icon: FileText, path: '/staff/complaints' },
     { name: 'Workers', icon: Users, path: '/staff/workers' },
-    { name: 'Assign Worker', icon: Briefcase, path: '/staff/assign-worker' },
     { name: 'Chat', icon: MessageSquare, path: '/staff/chat' },
   ],
   worker: [
     { name: 'Dashboard', icon: Home, path: '/worker' },
-    { name: 'My Tasks', icon: CheckSquare, path: '/worker/tasks' },
-    { name: 'My Profile', icon: User, path: '/worker/profile' },
-    { name: 'Reports', icon: BarChart3, path: '/worker/reports' },
+    { name: 'All Assignments', icon: CheckSquare, path: '/worker/tasks' },
+    { name: 'Profile', icon: User, path: '/worker/profile' },
+    { name: 'My Reports', icon: BarChart3, path: '/worker/reports' },
   ],
   admin: [
     { name: 'Dashboard', icon: Shield, path: '/admin' },
@@ -39,12 +38,17 @@ const navItems = {
 const Sidebar = ({ isOpen, onClose }) => {
   const location = useLocation();
   const { user, logout } = useAuth();
-  
+
   // Use actual user role from authentication
   const currentRole = user?.role || 'citizen';
   const navigation = (navItems[currentRole] || navItems.citizen).map((item) => {
     if (currentRole === 'citizen' && user?.slug) {
       const base = `/${user.slug}`;
+      // Remove leading slash from item.path if it exists to avoid double slashes
+      const cleanPath = item.path.startsWith('/') ? item.path.slice(1) : item.path;
+      return { ...item, path: `${base}/${cleanPath}` };
+    } else if (currentRole === 'staff' && user?.department?.slug) {
+      const base = `/${user.department.slug}`;
       // Remove leading slash from item.path if it exists to avoid double slashes
       const cleanPath = item.path.startsWith('/') ? item.path.slice(1) : item.path;
       return { ...item, path: `${base}/${cleanPath}` };

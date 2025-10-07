@@ -3,15 +3,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
-import { 
-  FileText, 
-  CheckCircle, 
-  Clock, 
+import {
+  FileText,
+  CheckCircle,
+  Clock,
   AlertCircle,
   Users,
   TrendingUp,
   BarChart3,
-  UserPlus,
   Eye,
   User,
   Loader2,
@@ -140,11 +139,6 @@ const StaffDashboard = () => {
               <SelectItem value="thisYear">This Year</SelectItem>
             </SelectContent>
           </Select>
-          <Button onClick={() => navigate(`/${departmentSlug}/staff/workers/create`)} className="w-full sm:w-auto">
-            <UserPlus className="w-4 h-4 mr-2" />
-            <span className="hidden sm:inline">Add Worker</span>
-            <span className="sm:hidden">Add</span>
-          </Button>
         </div>
       </div>
 

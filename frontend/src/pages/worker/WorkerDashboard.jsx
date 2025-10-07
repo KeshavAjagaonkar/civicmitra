@@ -28,13 +28,14 @@ const ProgressUpdateForm = ({ complaint, onUpdateSuccess }) => {
     }
 
     try {
-      const response = await request(`/api/complaints/${complaint._id}/worker-update`, {
-        method: 'PUT',
-        body: {
+      const response = await request(
+        `/api/complaints/${complaint._id}/worker-update`,
+        'PUT',
+        {
           status,
           notes,
-        },
-      });
+        }
+      );
 
       if (response.success) {
         toast({
@@ -137,22 +138,22 @@ const WorkerDashboard = () => {
   };
 
   const kpiData = [
-    { title: 'Assigned Tasks', value: workerStats.total.toString(), icon: FileText, color: 'text-blue-500' },
-    { title: 'In Progress', value: workerStats.inProgress.toString(), icon: Clock, color: 'text-orange-500' },
-    { title: 'Completed Today', value: workerStats.completedToday.toString(), icon: CheckCircle, color: 'text-green-500' },
+    { title: 'My Active Tasks', value: workerStats.inProgress.toString(), icon: Clock, color: 'text-orange-500' },
+    { title: 'Resolved Today', value: workerStats.completedToday.toString(), icon: CheckCircle, color: 'text-green-500' },
+    { title: 'Total Resolved', value: workerStats.completed.toString(), icon: CheckCircle, color: 'text-green-600' },
   ];
 
   return (
     <div className="space-y-6 md:space-y-8 p-4 md:p-0">
       <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold">Worker Dashboard</h1>
+        <h1 className="text-2xl md:text-3xl font-bold">Field Worker Dashboard</h1>
         <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-          Welcome, {user?.name}! Manage your assigned tasks here.
+          Welcome, {user?.name}! Update progress on your field assignments.
         </p>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+      {/* Performance KPI Cards */}
+      <div className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-3">
         {kpiData.map((kpi) => (
           <Card key={kpi.title} className="kpi-card-solid hover:shadow-lg transition-shadow duration-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -167,11 +168,11 @@ const WorkerDashboard = () => {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2 lg:gap-8">
-      {/* My Assigned Tasks */}
+      {/* Field Assignments */}
         <div className="space-y-6">
           <Card className="glass-card">
             <CardHeader>
-              <CardTitle>My Assigned Tasks</CardTitle>
+              <CardTitle>My Field Assignments</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -187,13 +188,16 @@ const WorkerDashboard = () => {
                   </div>
                 ) : complaints.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
-                    No tasks assigned to you yet. Great job!
+                    No field assignments yet.
                   </div>
                 ) : (
                   complaints.map((complaint) => (
                     <div key={complaint._id} className="border rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                       <div className="flex justify-between items-start mb-2">
-                        <h4 className="font-medium">{complaint.title}</h4>
+                        <div>
+                          <h4 className="font-medium">{complaint.title}</h4>
+                          <p className="text-xs text-gray-500 mt-1">Location: {complaint.location}</p>
+                        </div>
                         <div className="flex gap-2">
                           <Badge variant={getStatusVariant(complaint.status)}>
                             {complaint.status}
@@ -206,26 +210,27 @@ const WorkerDashboard = () => {
                       <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
                         {complaint.description.substring(0, 100)}...
                       </p>
-                      <div className="flex justify-between items-center text-xs text-gray-500">
-                        <span>{complaint.location}</span>
-                        <span>Filed on: {formatDate(complaint.createdAt)}</span>
+                      <div className="flex justify-between items-center text-xs text-gray-500 mb-3">
+                        <span>Citizen: {complaint.citizenId?.name || 'N/A'}</span>
+                        <span>Assigned: {formatDate(complaint.createdAt)}</span>
                       </div>
                       <div className="flex gap-2 mt-3">
-                        <Button 
-                          variant="default" 
+                        <Button
+                          variant="default"
                           size="sm"
                           onClick={() => setSelectedComplaint(complaint)}
+                          className="flex-1"
                         >
                           <CheckSquare className="w-4 h-4 mr-2" />
                           Update Progress
                         </Button>
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           size="sm"
                           onClick={() => navigate(`/worker/tasks/${complaint._id}`)}
                         >
                           <Eye className="w-4 h-4 mr-2" />
-                          View Full Details
+                          Details
                         </Button>
                       </div>
                     </div>
@@ -236,10 +241,10 @@ const WorkerDashboard = () => {
           </Card>
         </div>
 
-        {/* Update Progress Panel */}
+        {/* Progress Update Panel */}
         <div>
           {selectedComplaint ? (
-             <ProgressUpdateForm 
+             <ProgressUpdateForm
                 complaint={selectedComplaint}
                 onUpdateSuccess={() => {
                   refetch(); // Refetch the list of complaints
@@ -250,9 +255,10 @@ const WorkerDashboard = () => {
             <Card className="glass-card sticky top-24">
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <div className="text-center">
-                  <h3 className="text-lg font-semibold mb-2">Select a Task to Update</h3>
+                  <CheckSquare className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                  <h3 className="text-lg font-semibold mb-2">Add Field Progress Update</h3>
                   <p className="text-gray-600 dark:text-gray-400">
-                    Choose a complaint from the list on the left to add a progress update.
+                    Select an assignment from the left to record your field work progress and update the status.
                   </p>
                 </div>
               </CardContent>

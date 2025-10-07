@@ -10,11 +10,9 @@ const useWorkerData = () => {
   const fetchAssignedComplaints = async () => {
     try {
       setLoading(true);
-      const response = await request('/api/complaints/all', {
-        method: 'GET',
-      });
+      const response = await request('/api/complaints/all', 'GET');
       if (response?.success) {
-        // Filter complaints assigned to the current worker (worker role filter is handled in backend)
+        // Filter complaints assigned to the current worker (backend returns only worker's complaints)
         setAssignedComplaints(response.data || []);
       }
     } catch (err) {

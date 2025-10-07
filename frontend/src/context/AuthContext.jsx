@@ -194,7 +194,7 @@ export const AuthProvider = ({ children }) => {
       const res = await fetch(`${base}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(userData),
+        body: JSON.stringify({ ...userData, role }), // Include role in the request
       });
 
       const data = await res.json();

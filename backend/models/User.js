@@ -48,7 +48,7 @@ const UserSchema = new mongoose.Schema({
   },
   address: {
     type: String,
-    required: [true, 'Please add an address'],
+    required: function() { return this.role === 'citizen'; }, // Only required for citizens
   },
   password: {
     type: String,
@@ -65,6 +65,28 @@ const UserSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Department',
     required: function() { return this.role === 'staff' || this.role === 'worker'; }
+  },
+  // Worker-specific fields
+  workerId: {
+    type: String,
+    sparse: true, // Allows null values but enforces uniqueness for non-null values
+    unique: true,
+  },
+  specialization: {
+    type: String,
+  },
+  experienceYears: {
+    type: Number,
+    min: 0,
+  },
+  shiftPreference: {
+    type: String,
+  },
+  vehicleNumber: {
+    type: String,
+  },
+  licenseNumber: {
+    type: String,
   },
   isActive: {
     type: Boolean,

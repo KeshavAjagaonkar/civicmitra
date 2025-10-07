@@ -46,6 +46,7 @@ import StaffDashboard from './pages/staff/StaffDashboard';
 import StaffComplaintManagement from './pages/staff/ComplaintManagement';
 import AssignWorker from './pages/staff/AssignWorker';
 import StaffChatPage from './pages/staff/ChatPage';
+import WorkerManagement from './pages/staff/WorkerManagement';
 
 // Worker Pages
 import WorkerDashboard from './pages/worker/WorkerDashboard';
@@ -121,6 +122,7 @@ function App() {
             <Route path="/:departmentSlug/staff/complaints" element={<StaffRoute><StaffComplaintManagement /></StaffRoute>} />
             <Route path="/:departmentSlug/staff/complaints/:id" element={<StaffRoute><ComplaintDetails /></StaffRoute>} />
             <Route path="/:departmentSlug/staff/complaints/:id/assign" element={<StaffRoute><AssignWorker /></StaffRoute>} />
+            <Route path="/:departmentSlug/staff/workers" element={<StaffRoute><WorkerManagement /></StaffRoute>} />
             <Route path="/:departmentSlug/staff/complaints/:id/chat" element={<StaffRoute><StaffChatPage /></StaffRoute>} />
             <Route path="/:departmentSlug/staff/chat" element={<StaffRoute><StaffChatPage /></StaffRoute>} />
             <Route path="/:departmentSlug/staff/profile" element={<StaffRoute><ProfilePage /></StaffRoute>} />
@@ -130,6 +132,7 @@ function App() {
             <Route path="/staff" element={<StaffRoute><StaffDashboard /></StaffRoute>} />
             <Route path="/staff/complaints" element={<StaffRoute><StaffComplaintManagement /></StaffRoute>} />
             <Route path="/staff/complaints/:id" element={<StaffRoute><ComplaintDetails /></StaffRoute>} />
+            <Route path="/staff/workers" element={<StaffRoute><WorkerManagement /></StaffRoute>} />
             
             {/* ==== WORKER ROUTES ==== */}
             <Route path="/worker" element={<WorkerRoute><WorkerDashboard /></WorkerRoute>} />

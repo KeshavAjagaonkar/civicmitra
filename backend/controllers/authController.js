@@ -16,21 +16,56 @@ const sendTokenResponse = (user, statusCode, res) => {
   });
 };
 
-// @desc    Register a new CITIZEN user
+// @desc    Register a new user (citizen, worker, or staff)
 // @route   POST /api/auth/register
 // @access  Public
 exports.register = asyncHandler(async (req, res, next) => {
-  const { name, email, phone, address, password } = req.body;
+  const { name, email, phone, address, password, role, department, workerId, specialization, experienceYears, shiftPreference, vehicleNumber, licenseNumber } = req.body;
 
-  // This route is for citizen registration only.
-  const user = await User.create({
+  // Validate role - default to 'citizen' if not provided or invalid
+  const allowedRoles = ['citizen', 'worker', 'staff'];
+  const userRole = allowedRoles.includes(role) ? role : 'citizen';
+
+  // Create user data object
+  const userData = {
     name,
     email,
     phone,
     address,
     password,
-    role: 'citizen', // Hardcode role to 'citizen' for security
-  });
+    role: userRole,
+  };
+
+  // Handle department - convert name to ID if needed
+  if (department && (userRole === 'worker' || userRole === 'staff')) {
+    const Department = require('../models/Department');
+
+    // Check if department is an ObjectId or a name
+    if (department.match(/^[0-9a-fA-F]{24}$/)) {
+      // It's already an ObjectId
+      userData.department = department;
+    } else {
+      // It's a name, find the department by name
+      const dept = await Department.findOne({ name: department });
+      if (dept) {
+        userData.department = dept._id;
+      } else {
+        return next(new ErrorResponse(`Department '${department}' not found`, 400));
+      }
+    }
+  }
+
+  // Add worker-specific fields
+  if (userRole === 'worker') {
+    if (workerId) userData.workerId = workerId;
+    if (specialization) userData.specialization = specialization;
+    if (experienceYears) userData.experienceYears = experienceYears;
+    if (shiftPreference) userData.shiftPreference = shiftPreference;
+    if (vehicleNumber) userData.vehicleNumber = vehicleNumber;
+    if (licenseNumber) userData.licenseNumber = licenseNumber;
+  }
+
+  const user = await User.create(userData);
 
   sendTokenResponse(user, 201, res);
 });

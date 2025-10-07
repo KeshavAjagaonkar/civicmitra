@@ -51,10 +51,11 @@ const AssignWorker = () => {
     }
     setIsAssigning(true);
     try {
-      const response = await request(`/api/complaints/${complaintId}/assign-worker`, {
-        method: 'PATCH',
-        body: { workerId: selectedWorkerId },
-      });
+      const response = await request(
+        `/api/complaints/${complaintId}/assign-worker`,
+        'PATCH',
+        { workerId: selectedWorkerId }
+      );
       if (response.success) {
         toast({ title: "Success!", description: `Worker has been assigned to complaint #${complaint._id.slice(-6)}.` });
         navigate('/staff/complaints');
