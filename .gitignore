@@ -1,0 +1,39 @@
+# Generic Files & Folders
+
+## Compiled source, build outputs
+dist/
+build/
+out/
+bin/
+
+## Dependencies
+node_modules/
+vendor/
+venv/
+env/
+
+## IDE/Editor directories
+.idea/
+.vscode/
+*.swp
+*.swo
+
+## OS-generated files
+.DS_Store
+Thumbs.db
+
+## Log files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+## Environment variables (NEVER commit these)
+.env
+.env.local
+.env.*.local
+*.env
+
+## Temporary files
+*.tmp
+*.temp

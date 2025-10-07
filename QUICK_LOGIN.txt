@@ -1,0 +1,43 @@
+🔐 CIVICMITRA - QUICK LOGIN REFERENCE
+==========================================
+
+✅ DATABASE POPULATED SUCCESSFULLY!
+
+🚀 START COMMAND: .\start.ps1 (from project root)
+
+📱 FRONTEND URL: http://localhost:5173
+📊 BACKEND URL: http://localhost:5000
+
+LOGIN CREDENTIALS:
+------------------
+
+👑 ADMIN (Full Access)
+Email: admin@civicmitra.com
+Pass:  admin123
+
+👨‍💼 STAFF (Department Management)  
+Email: staff@civicmitra.com
+Pass:  staff123
+
+🔧 WORKER (Field Operations)
+Email: worker@civicmitra.com  
+Pass:  worker123
+
+👥 CITIZEN (File Complaints)
+Email: citizen@civicmitra.com
+Pass:  citizen123
+
+ADDITIONAL TEST ACCOUNTS:
+------------------------
+jane.staff@civicmitra.com / staff123 (Water Dept)
+sarah.worker@civicmitra.com / worker123 (Field Worker)  
+bob@civicmitra.com / citizen123 (Citizen)
+
+SAMPLE DATA INCLUDED:
+--------------------
+✅ 6 Departments
+✅ 7 Users (all roles)  
+✅ 3 Sample complaints with different statuses
+
+⚠️  REMEMBER: Add your Gemini API key to backend/.env
+🔗 Get key: https://aistudio.google.com/app/apikey

@@ -1,0 +1,108 @@
+import { useState, useEffect } from 'react';
+import useApi from './useApi';
+
+const useUserManagement = () => {
+  const { request } = useApi();
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const response = await request('/api/admin/users', {
+        method: 'GET',
+      });
+      if (response?.success) {
+        setUsers(response.data || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch users:', err);
+      setError(err.message || 'Failed to fetch users');
+      setUsers([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const createUser = async (userData) => {
+    try {
+      const response = await request('/api/admin/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userData)
+      });
+      
+      if (response?.success) {
+        setUsers(prev => [...prev, response.data]);
+        return { success: true, data: response.data };
+      }
+      return { success: false, error: response.message || 'Failed to create user' };
+    } catch (err) {
+      console.error('Failed to create user:', err);
+      return { success: false, error: err.message || 'Failed to create user' };
+    }
+  };
+
+  const updateUserRole = async (userId, newRole) => {
+    try {
+      const response = await request(`/api/admin/users/${userId}/role`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ role: newRole })
+      });
+      
+      if (response?.success) {
+        setUsers(prev => prev.map(user => 
+          user._id === userId ? { ...user, role: newRole } : user
+        ));
+        return { success: true, data: response.data };
+      }
+      return { success: false, error: response.message || 'Failed to update user role' };
+    } catch (err) {
+      console.error('Failed to update user role:', err);
+      return { success: false, error: err.message || 'Failed to update user role' };
+    }
+  };
+
+  const deleteUser = async (userId) => {
+    try {
+      const response = await request(`/api/admin/users/${userId}`, {
+        method: 'DELETE',
+      });
+      
+      if (response?.success) {
+        setUsers(prev => prev.filter(user => user._id !== userId));
+        return { success: true };
+      }
+      return { success: false, error: response.message || 'Failed to delete user' };
+    } catch (err) {
+      console.error('Failed to delete user:', err);
+      return { success: false, error: err.message || 'Failed to delete user' };
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const refetch = () => {
+    fetchUsers();
+  };
+
+  return {
+    users,
+    loading,
+    error,
+    refetch,
+    createUser,
+    updateUserRole,
+    deleteUser
+  };
+};
+
+export default useUserManagement;

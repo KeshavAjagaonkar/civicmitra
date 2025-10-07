@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CivicMitra Test</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+    <h1>CivicMitra Test Page</h1>
+    
+    <h2>Socket.IO Connection Test</h2>
+    <div id="socket-status">Not connected</div>
+    <button onclick="testSocket()">Test Socket.IO Connection</button>
+    
+    <h2>API Test</h2>
+    <div id="api-status">Not tested</div>
+    <button onclick="testAPI()">Test Backend API</button>
+    
+    <h2>Complaint Submission Test</h2>
+    <div id="submission-status">Not tested</div>
+    <button onclick="testComplaintSubmission()">Test Complaint Submission (Requires Auth)</button>
+    
+    <script>
+        let socket = null;
+        
+        function testSocket() {
+            const statusDiv = document.getElementById('socket-status');
+            statusDiv.textContent = 'Connecting...';
+            
+            // Test the exact same configuration as the React app
+            socket = io('http://localhost:5000', {
+                transports: ['polling', 'websocket'],
+                withCredentials: true
+            });
+            
+            socket.on('connect', () => {
+                console.log('Socket connected:', socket.id);
+                statusDiv.textContent = `✅ Connected! Socket ID: ${socket.id}`;
+                statusDiv.style.color = 'green';
+            });
+            
+            socket.on('disconnect', () => {
+                console.log('Socket disconnected');
+                statusDiv.textContent = '❌ Disconnected';
+                statusDiv.style.color = 'red';
+            });
+            
+            socket.on('connect_error', (error) => {
+                console.error('Socket connection error:', error);
+                statusDiv.textContent = `❌ Connection Error: ${error.message}`;
+                statusDiv.style.color = 'red';
+            });
+            
+            // Test after 5 seconds
+            setTimeout(() => {
+                if (socket && socket.connected) {
+                    console.log('Socket still connected after 5 seconds');
+                } else {
+                    statusDiv.textContent = '❌ Socket connection failed or dropped';
+                    statusDiv.style.color = 'red';
+                }
+            }, 5000);
+        }
+        
+        function testAPI() {
+            const statusDiv = document.getElementById('api-status');
+            statusDiv.textContent = 'Testing...';
+            
+            fetch('http://localhost:5000/', {
+                method: 'GET',
+                credentials: 'include'
+            })
+            .then(response => response.text())
+            .then(data => {
+                statusDiv.textContent = `✅ Backend responding: ${data}`;
+                statusDiv.style.color = 'green';
+            })
+            .catch(error => {
+                statusDiv.textContent = `❌ API Error: ${error.message}`;
+                statusDiv.style.color = 'red';
+            });
+        }
+        
+        function testComplaintSubmission() {
+            const statusDiv = document.getElementById('submission-status');
+            statusDiv.textContent = 'This requires authentication - test through the React app';
+            statusDiv.style.color = 'orange';
+        }
+    </script>
+</body>
+</html>
