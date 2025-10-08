@@ -133,6 +133,19 @@ const Chat = ({ complaintId }) => {
     return message.sender.name || 'Unknown';
   };
 
+  const getChatTitle = () => {
+    switch (user?.role) {
+      case 'citizen':
+        return 'Chat with Staff';
+      case 'staff':
+      case 'worker':
+      case 'admin':
+        return 'Chat with Citizen';
+      default:
+        return 'Chat';
+    }
+  };
+
   if (!complaintId) {
     return (
       <Card className="glass-card h-full flex items-center justify-center">
@@ -145,7 +158,7 @@ const Chat = ({ complaintId }) => {
     <Card className="glass-card h-full flex flex-col">
       <CardHeader className="border-b border-gray-200 dark:border-gray-700">
         <CardTitle className="flex items-center justify-between">
-          <span>Chat with Staff</span>
+          <span>{getChatTitle()}</span>
           {isConnected && (
             <span className="flex items-center gap-2 text-sm font-normal text-green-600">
               <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>

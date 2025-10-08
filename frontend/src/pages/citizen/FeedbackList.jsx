@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Star, Loader2, AlertCircle } from 'lucide-react';
@@ -9,19 +9,38 @@ import { useAuth } from '@/hooks/useAuth';
 
 const FeedbackList = () => {
   const navigate = useNavigate();
+  const { slug } = useParams();
   const { user } = useAuth();
   const { request, isLoading } = useApi();
   const { toast } = useToast();
   const [resolvedComplaints, setResolvedComplaints] = useState([]);
 
+  // Determine the base path
+  const basePath = slug ? `/${slug}` : (user?.slug ? `/${user.slug}` : '');
+
   useEffect(() => {
     const fetchResolvedComplaints = async () => {
       try {
-        const result = await request('/api/complaints');
+        // Fetch user's own complaints
+        const result = await request('/api/complaints/my');
         if (result.success) {
           // Filter only resolved complaints
           const resolved = result.data.filter(c => c.status === 'Resolved');
-          setResolvedComplaints(resolved);
+
+          // Check which ones don't have feedback yet
+          const complaintsNeedingFeedback = [];
+          for (const complaint of resolved) {
+            try {
+              const feedbackResult = await request(`/api/feedback/${complaint._id}`);
+              if (!feedbackResult.data) {
+                complaintsNeedingFeedback.push(complaint);
+              }
+            } catch (err) {
+              complaintsNeedingFeedback.push(complaint);
+            }
+          }
+
+          setResolvedComplaints(complaintsNeedingFeedback);
         }
       } catch (err) {
         toast({ title: 'Error', description: err.message, variant: 'destructive' });
@@ -31,10 +50,7 @@ const FeedbackList = () => {
   }, [request, toast]);
 
   const handleGiveFeedback = (complaintId) => {
-    const feedbackPath = user?.slug
-      ? `/${user.slug}/complaints/${complaintId}/feedback`
-      : `/complaints/${complaintId}/feedback`;
-    navigate(feedbackPath);
+    navigate(`${basePath}/complaints/${complaintId}/feedback`);
   };
 
   if (isLoading) {
@@ -66,7 +82,7 @@ const FeedbackList = () => {
             <Button
               variant="outline"
               className="mt-4"
-              onClick={() => navigate(user?.slug ? `/${user.slug}/complaints` : '/complaints')}
+              onClick={() => navigate(`${basePath}/complaints`)}
             >
               View My Complaints
             </Button>

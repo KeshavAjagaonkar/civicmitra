@@ -35,3 +35,24 @@ exports.createFeedback = asyncHandler(async (req, res, next) => {
     data: newFeedback,
   });
 });
+
+// @desc    Get feedback for a complaint
+// @route   GET /api/feedback/:complaintId
+// @access  Private
+exports.getFeedbackByComplaint = asyncHandler(async (req, res, next) => {
+  const { complaintId } = req.params;
+
+  const feedback = await Feedback.findOne({ complaintId }).populate('citizenId', 'name email');
+
+  if (!feedback) {
+    return res.status(200).json({
+      success: true,
+      data: null,
+    });
+  }
+
+  res.status(200).json({
+    success: true,
+    data: feedback,
+  });
+});

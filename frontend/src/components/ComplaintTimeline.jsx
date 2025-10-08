@@ -5,12 +5,17 @@ import { Button } from './ui/Button';
 import { format } from 'date-fns';
 import useApi from '@/hooks/useApi';
 import { useToast } from './ui/use-toast';
+import { ImagePlus, X } from 'lucide-react';
+import { Dialog, DialogContent, DialogTitle } from './ui/Dialog';
 
 const ComplaintTimeline = ({ isEditable, complaintId, timeline = [] }) => {
   const { request, isLoading } = useApi();
   const { toast } = useToast();
   const [timelineEvents, setTimelineEvents] = useState([]);
   const [newUpdate, setNewUpdate] = useState('');
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [previewImages, setPreviewImages] = useState([]);
+  const [selectedImage, setSelectedImage] = useState(null);
 
   // Update timeline when prop changes
   useEffect(() => {
@@ -18,6 +23,35 @@ const ComplaintTimeline = ({ isEditable, complaintId, timeline = [] }) => {
       setTimelineEvents(timeline);
     }
   }, [timeline]);
+
+  const handleFileSelect = (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length + selectedFiles.length > 5) {
+      toast({
+        title: 'Too many files',
+        description: 'Maximum 5 photos allowed per update',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setSelectedFiles([...selectedFiles, ...files]);
+
+    // Generate preview URLs
+    const newPreviews = files.map(file => URL.createObjectURL(file));
+    setPreviewImages([...previewImages, ...newPreviews]);
+  };
+
+  const removeFile = (index) => {
+    const newFiles = selectedFiles.filter((_, i) => i !== index);
+    const newPreviews = previewImages.filter((_, i) => i !== index);
+
+    // Revoke the URL to free memory
+    URL.revokeObjectURL(previewImages[index]);
+
+    setSelectedFiles(newFiles);
+    setPreviewImages(newPreviews);
+  };
 
   const handleAddUpdate = async () => {
     if (!newUpdate.trim()) {
@@ -30,28 +64,30 @@ const ComplaintTimeline = ({ isEditable, complaintId, timeline = [] }) => {
     }
 
     try {
-      const result = await request(`/api/complaints/${complaintId}/timeline`, 'PUT', {
-        action: 'Progress Update',
-        status: 'In Progress',
-        notes: newUpdate.trim(),
+      const formData = new FormData();
+      formData.append('status', 'In Progress');
+      formData.append('notes', newUpdate.trim());
+
+      // Add selected files
+      selectedFiles.forEach(file => {
+        formData.append('attachments', file);
       });
 
+      const result = await request(`/api/complaints/${complaintId}/timeline`, 'PUT', formData, true);
+
       if (result.success) {
-        // Add the new event to local state
-        const newEvent = {
-          action: 'Progress Update',
-          status: 'In Progress',
-          notes: newUpdate.trim(),
-          updatedBy: 'You',
-          createdAt: new Date().toISOString(),
-        };
-        setTimelineEvents([...timelineEvents, newEvent]);
+        setTimelineEvents(result.data.timeline || timelineEvents);
         setNewUpdate('');
+        setSelectedFiles([]);
+        setPreviewImages([]);
 
         toast({
           title: 'Update added',
           description: 'Timeline updated successfully',
         });
+
+        // Reload page to show updated timeline
+        window.location.reload();
       }
     } catch (err) {
       toast({
@@ -102,6 +138,19 @@ const ComplaintTimeline = ({ isEditable, complaintId, timeline = [] }) => {
                     - {typeof event.updatedBy === 'object' ? event.updatedBy.name : event.updatedBy}
                   </p>
                 )}
+                {event.attachments && event.attachments.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {event.attachments.map((attachment, idx) => (
+                      <img
+                        key={idx}
+                        src={attachment.url}
+                        alt={`Update photo ${idx + 1}`}
+                        className="w-24 h-24 object-cover rounded-lg border-2 border-gray-200 cursor-pointer hover:scale-105 transition-transform hover:shadow-lg"
+                        onClick={() => setSelectedImage(attachment.url)}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -117,6 +166,43 @@ const ComplaintTimeline = ({ isEditable, complaintId, timeline = [] }) => {
               className="mb-2 glass-input"
               rows={3}
             />
+
+            {/* Photo Upload Section */}
+            <div className="mb-4">
+              <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-300 mb-2">
+                <ImagePlus className="w-5 h-5" />
+                <span>Attach Photos (Optional, max 5)</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+              </label>
+
+              {/* Preview Selected Images */}
+              {previewImages.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {previewImages.map((preview, index) => (
+                    <div key={index} className="relative">
+                      <img
+                        src={preview}
+                        alt={`Preview ${index + 1}`}
+                        className="w-20 h-20 object-cover rounded-lg border-2 border-gray-300"
+                      />
+                      <button
+                        onClick={() => removeFile(index)}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <Button
               onClick={handleAddUpdate}
               loading={isLoading}
@@ -127,6 +213,22 @@ const ComplaintTimeline = ({ isEditable, complaintId, timeline = [] }) => {
           </div>
         )}
       </CardContent>
+
+      {/* Image Preview Modal */}
+      <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
+        <DialogContent className="max-w-4xl glass-card">
+          <DialogTitle>Photo Preview</DialogTitle>
+          {selectedImage && (
+            <div className="flex items-center justify-center">
+              <img
+                src={selectedImage}
+                alt="Full size preview"
+                className="max-w-full max-h-[80vh] object-contain rounded-xl"
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };

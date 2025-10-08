@@ -37,13 +37,16 @@ const StarRating = ({ rating, onRatingChange, disabled = false }) => (
 );
 
 const FeedbackPage = () => {
-  const { id: complaintId } = useParams(); // Use 'id' to match App.jsx
+  const { id: complaintId, slug } = useParams(); // Get both id and slug
   const navigate = useNavigate();
   const { user } = useAuth();
   const { request, isLoading } = useApi();
   const { toast } = useToast();
-  
+
   const [complaint, setComplaint] = useState(null);
+
+  // Determine the base path for navigation
+  const basePath = slug ? `/${slug}` : '';
 
   const {
     control,
@@ -63,21 +66,21 @@ const FeedbackPage = () => {
         if (result.success) {
           if (result.data.citizenId._id !== user._id) {
              toast({ title: 'Unauthorized', description: "You can only give feedback on your own complaints.", variant: 'destructive' });
-             navigate('/complaints');
+             navigate(`${basePath}/complaints`);
           } else if (result.data.status !== 'Resolved') {
             toast({ title: 'Not Yet Resolved', description: 'Feedback can only be submitted for resolved complaints.', variant: 'destructive' });
-            navigate(`/complaints/${complaintId}`);
+            navigate(`${basePath}/complaints/${complaintId}`);
           } else {
             setComplaint(result.data);
           }
         }
       } catch (err) {
         toast({ title: 'Failed to fetch complaint', description: err.message, variant: 'destructive' });
-        navigate('/complaints');
+        navigate(`${basePath}/complaints`);
       }
     };
     if (user) fetchComplaint();
-  }, [complaintId, request, toast, navigate, user]);
+  }, [complaintId, request, toast, navigate, user, basePath]);
 
   const onSubmit = async (data) => {
     try {
@@ -89,7 +92,7 @@ const FeedbackPage = () => {
 
       if (result.success) {
         toast({ title: 'Feedback Submitted!', description: 'Thank you for helping us improve our services.' });
-        navigate('/complaints');
+        navigate(`${basePath}/complaints`);
       }
     } catch (err) {
       toast({ title: 'Submission Failed', description: err.message, variant: 'destructive' });

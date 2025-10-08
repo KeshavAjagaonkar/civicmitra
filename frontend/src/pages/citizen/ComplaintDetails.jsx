@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useLocation } from 'react-router-dom';
+import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import ComplaintTimeline from '@/components/ComplaintTimeline';
@@ -10,8 +10,9 @@ import { Label } from '@/components/ui/Label';
 import FormFieldBox from '@/components/FormFieldBox';
 import useApi from '@/hooks/useApi';
 import { useToast } from '@/components/ui/use-toast';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Star } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/Dialog';
+import { useAuth } from '@/hooks/useAuth';
 
 const statusVariant = {
   Submitted: 'secondary',
@@ -29,12 +30,15 @@ const priorityStyles = {
 const ComplaintDetails = () => {
   const { id } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const { request, isLoading } = useApi();
   const { toast } = useToast();
   const [complaint, setComplaint] = useState(null);
   const [currentStatus, setCurrentStatus] = useState('');
   const [assignedWorker, setAssignedWorker] = useState('');
   const [workers, setWorkers] = useState([]);
+  const [feedback, setFeedback] = useState(null);
 
   const [selectedImage, setSelectedImage] = useState(null);
   const [userRole, setUserRole] = useState(() => {
@@ -52,12 +56,20 @@ const ComplaintDetails = () => {
           setComplaint(result.data);
           setCurrentStatus(result.data.status);
           setAssignedWorker(result.data.workerId || 'unassigned');
+
+          // Fetch feedback if complaint is resolved
+          if (result.data.status === 'Resolved') {
+            const feedbackResult = await request(`/api/feedback/${id}`);
+            if (feedbackResult.success) {
+              setFeedback(feedbackResult.data);
+            }
+          }
         }
       } catch (err) {
-        toast({ 
-          title: 'Failed to fetch complaint', 
-          description: err.message, 
-          variant: 'destructive' 
+        toast({
+          title: 'Failed to fetch complaint',
+          description: err.message,
+          variant: 'destructive'
         });
       }
     };
@@ -65,7 +77,7 @@ const ComplaintDetails = () => {
     if (id) {
       fetchComplaint();
     }
-  }, [id, request, toast]);
+  }, [id, request, toast, userRole]);
 
   // Fetch workers after complaint is loaded
   useEffect(() => {
@@ -172,19 +184,30 @@ const ComplaintDetails = () => {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center gap-4">
-        <Button 
-          variant="outline" 
-          size="sm"
-          onClick={() => window.history.back()}
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back
-        </Button>
-      <div>
-        <h1 className="text-3xl font-bold">{complaint.title}</h1>
-        <p className="text-gray-500">Complaint ID: {id}</p>
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => window.history.back()}
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold">{complaint.title}</h1>
+            <p className="text-gray-500">Complaint ID: {id}</p>
+          </div>
         </div>
+        {userRole === 'citizen' && complaint.status === 'Resolved' && !feedback && (
+          <Button
+            onClick={() => navigate(`/complaints/${id}/feedback`)}
+            className="flex items-center gap-2"
+          >
+            <Star className="w-4 h-4" />
+            Give Feedback
+          </Button>
+        )}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3 lg:gap-8">
@@ -258,6 +281,37 @@ const ComplaintDetails = () => {
                   <strong>Attachments:</strong>
                   <div className="mt-2 space-y-2">
                     {complaint.attachments.map((attachment, index) => (                      <div key={index} className="flex items-center gap-2">                        <img                          src={attachment.url}                          alt={`Attachment ${index + 1}`}                          className="w-20 h-20 object-cover rounded-xl border-2 border-gray-200 cursor-pointer hover:scale-105 transition-transform hover:shadow-lg"                          onClick={() => setSelectedImage(attachment.url)}                        />                      </div>                    ))}
+                  </div>
+                </div>
+              )}
+              {feedback && (
+                <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
+                  <strong>Citizen Feedback:</strong>
+                  <div className="mt-2 space-y-2 bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">Rating:</span>
+                      <div className="flex gap-1">
+                        {[...Array(5)].map((_, index) => (
+                          <Star
+                            key={index}
+                            className={`w-4 h-4 ${
+                              index < feedback.rating
+                                ? 'text-yellow-400 fill-yellow-400'
+                                : 'text-gray-300 dark:text-gray-600'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        ({feedback.rating}/5)
+                      </span>
+                    </div>
+                    {feedback.comments && (
+                      <div>
+                        <span className="font-medium">Comments:</span>
+                        <p className="text-gray-600 dark:text-gray-400 mt-1">{feedback.comments}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

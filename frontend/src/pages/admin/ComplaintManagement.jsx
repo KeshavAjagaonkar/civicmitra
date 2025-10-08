@@ -102,12 +102,17 @@ const ComplaintManagement = () => {
             <Card key={c._id}>
               <CardContent className="pt-6">
                 <div className="flex justify-between items-start gap-4">
-                  <div>
+                  <div className="flex-1">
                     <div className="flex items-center gap-4 mb-2">
                       <Badge className={getPriorityColor(c.priority)}>{c.priority}</Badge>
                       <Badge variant={getStatusVariant(c.status)}>{c.status}</Badge>
                     </div>
-                    <h3 className="font-semibold text-lg">{c.title}</h3>
+                    <h3
+                      className="font-semibold text-lg hover:text-blue-600 cursor-pointer transition-colors"
+                      onClick={() => navigate(`/admin/complaints/${c._id}`)}
+                    >
+                      {c.title}
+                    </h3>
                     <p className="text-sm text-gray-500">In <span className="font-medium text-gray-700">{c.department?.name || 'N/A'}</span> by <span className="font-medium text-gray-700">{c.citizenId?.name || 'N/A'}</span> on {formatDate(c.createdAt)}</p>
                   </div>
                   <Dialog open={complaintToDelete?._id === c._id} onOpenChange={() => setComplaintToDelete(null)}>
@@ -118,6 +123,10 @@ const ComplaintManagement = () => {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
+                        <DropdownMenuItem onSelect={() => navigate(`/admin/complaints/${c._id}`)}>
+                          <Eye className="w-4 h-4 mr-2" />
+                          View Details
+                        </DropdownMenuItem>
                         <DropdownMenuItem onSelect={() => handleStatusUpdate(c._id, 'In Progress')}>Mark In Progress</DropdownMenuItem>
                         <DropdownMenuItem onSelect={() => handleStatusUpdate(c._id, 'Resolved')}>Mark Resolved</DropdownMenuItem>
                         <DropdownMenuItem onSelect={() => handleStatusUpdate(c._id, 'Closed')}>Mark Closed</DropdownMenuItem>

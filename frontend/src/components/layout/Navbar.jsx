@@ -46,16 +46,38 @@ const Navbar = ({ toggleSidebar }) => {
   const getProfilePath = () => {
     switch (user?.role) {
       case 'admin': return '/admin/profile';
-      case 'staff': return '/staff/profile';
+      case 'staff':
+        return user?.department?.slug
+          ? `/${user.department.slug}/staff/profile`
+          : '/staff/profile';
       case 'worker': return '/worker/profile';
+      case 'citizen':
+        return user?.slug ? `/${user.slug}/profile` : '/profile';
       default: return '/profile';
     }
   };
-  
+
+  const getSettingsPath = () => {
+    switch (user?.role) {
+      case 'admin': return '/admin/settings';
+      case 'staff':
+        return user?.department?.slug
+          ? `/${user.department.slug}/staff/settings`
+          : '/staff/settings';
+      case 'worker': return '/worker/settings';
+      case 'citizen':
+        return user?.slug ? `/${user.slug}/settings` : '/settings';
+      default: return '/settings';
+    }
+  };
+
   const getLogoPath = () => {
      switch (user?.role) {
       case 'admin': return '/admin';
-      case 'staff': return '/staff';
+      case 'staff':
+        return user?.department?.slug
+          ? `/${user.department.slug}/staff`
+          : '/staff';
       case 'worker': return '/worker';
       case 'citizen':
         return user?.slug ? `/${user.slug}/dashboard` : '/dashboard';
@@ -139,8 +161,8 @@ const Navbar = ({ toggleSidebar }) => {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-10 w-10 rounded-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 border-2 border-blue-700 dark:border-blue-400">
-                <User className="h-5 w-5 text-white" />
+              <Button variant="ghost" size="icon">
+                <User className="h-5 w-5" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl" align="end" forceMount>
@@ -155,7 +177,7 @@ const Navbar = ({ toggleSidebar }) => {
                 <User className="mr-2 h-4 w-4" />
                 <span>Profile</span>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate(getProfilePath())}>
+              <DropdownMenuItem onClick={() => navigate(getSettingsPath())}>
                 <Settings className="mr-2 h-4 w-4" />
                 <span>Settings</span>
               </DropdownMenuItem>

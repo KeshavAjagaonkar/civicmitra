@@ -138,6 +138,8 @@ function App() {
             <Route path="/staff/complaints/:id" element={<StaffRoute><ComplaintDetails /></StaffRoute>} />
             <Route path="/staff/stats" element={<StaffRoute><StaffStats /></StaffRoute>} />
             <Route path="/staff/workers" element={<StaffRoute><WorkerManagement /></StaffRoute>} />
+            <Route path="/staff/profile" element={<StaffRoute><ProfilePage /></StaffRoute>} />
+            <Route path="/staff/settings" element={<StaffRoute><ProfilePage /></StaffRoute>} />
             
             {/* ==== WORKER ROUTES ==== */}
             <Route path="/worker" element={<WorkerRoute><WorkerDashboard /></WorkerRoute>} />

@@ -17,6 +17,18 @@ const TimelineEventSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
   },
+  attachments: [
+    {
+      public_id: {
+        type: String,
+        required: true,
+      },
+      url: {
+        type: String,
+        required: true,
+      },
+    },
+  ],
   createdAt: {
     type: Date,
     default: Date.now,
@@ -135,6 +147,12 @@ const ComplaintSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  updatedAt: {
+    type: Date,
+    default: Date.now,
+  },
+}, {
+  timestamps: true, // Automatically manage createdAt and updatedAt
 });
 
 module.exports = mongoose.model('Complaint', ComplaintSchema);

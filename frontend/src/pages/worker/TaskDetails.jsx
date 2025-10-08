@@ -6,9 +6,10 @@ import { Badge } from '@/components/ui/Badge';
 import { Textarea } from '@/components/ui/Textarea';
 import { Label } from '@/components/ui/Label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
-import { ArrowLeft, Clock, CheckCircle, AlertCircle, MapPin, User, Calendar, Phone, Mail, Camera, FileText, Loader2, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Clock, CheckCircle, AlertCircle, MapPin, User, Calendar, Phone, Mail, Camera, FileText, Loader2, AlertTriangle, ImagePlus, X } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import useApi from '@/hooks/useApi'; // 1. Import useApi hook
+import ComplaintTimeline from '@/components/ComplaintTimeline';
 
 const TaskDetails = () => {
   const { id: taskId } = useParams(); // Renamed to 'id' to match the route param in App.jsx
@@ -21,6 +22,8 @@ const TaskDetails = () => {
   const [newUpdate, setNewUpdate] = useState('');
   const [newStatus, setNewStatus] = useState('In Progress');
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'details');
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [previewImages, setPreviewImages] = useState([]);
 
   // 2. Fetch complaint data from the backend when the component mounts
   const fetchTaskDetails = async () => {
@@ -78,6 +81,35 @@ const TaskDetails = () => {
     });
   };
 
+  const handleFileSelect = (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length + selectedFiles.length > 5) {
+      toast({
+        title: 'Too many files',
+        description: 'Maximum 5 photos allowed per update',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setSelectedFiles([...selectedFiles, ...files]);
+
+    // Generate preview URLs
+    const newPreviews = files.map(file => URL.createObjectURL(file));
+    setPreviewImages([...previewImages, ...newPreviews]);
+  };
+
+  const removeFile = (index) => {
+    const newFiles = selectedFiles.filter((_, i) => i !== index);
+    const newPreviews = previewImages.filter((_, i) => i !== index);
+
+    // Revoke the URL to free memory
+    URL.revokeObjectURL(previewImages[index]);
+
+    setSelectedFiles(newFiles);
+    setPreviewImages(newPreviews);
+  };
+
   // 3. Connect the update form to the backend API
   const handleAddUpdate = async () => {
     if (!newUpdate.trim()) {
@@ -85,18 +117,27 @@ const TaskDetails = () => {
        return;
     }
     try {
+      const formData = new FormData();
+      formData.append('status', newStatus);
+      formData.append('notes', newUpdate.trim());
+
+      // Add selected files
+      selectedFiles.forEach(file => {
+        formData.append('attachments', file);
+      });
+
       const response = await request(
         `/api/complaints/${taskId}/worker-update`,
         'PUT',
-        {
-          status: newStatus,
-          notes: newUpdate,
-        }
+        formData,
+        true // isFormData flag
       );
 
       if (response.success) {
         toast({ title: 'Progress update saved successfully!' });
         setNewUpdate('');
+        setSelectedFiles([]);
+        setPreviewImages([]);
         fetchTaskDetails(); // Refetch data to show the new timeline event
         setActiveTab('timeline'); // Switch to timeline to show the update
       }
@@ -236,6 +277,46 @@ const TaskDetails = () => {
                 />
                 <p className="text-xs text-gray-500 mt-1">Describe what work was done, any issues encountered, and next steps if applicable.</p>
               </div>
+
+              {/* Photo Upload Section */}
+              <div>
+                <Label className="block text-sm font-medium mb-2">Attach Progress Photos (Optional)</Label>
+                <label className="flex items-center justify-center gap-2 cursor-pointer border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 hover:border-blue-500 transition-colors">
+                  <ImagePlus className="w-6 h-6 text-gray-400" />
+                  <span className="text-sm text-gray-600 dark:text-gray-400">
+                    Click to upload photos (Max 5)
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                </label>
+
+                {/* Preview Selected Images */}
+                {previewImages.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {previewImages.map((preview, index) => (
+                      <div key={index} className="relative">
+                        <img
+                          src={preview}
+                          alt={`Preview ${index + 1}`}
+                          className="w-20 h-20 object-cover rounded-lg border-2 border-gray-300"
+                        />
+                        <button
+                          onClick={() => removeFile(index)}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <Button onClick={handleAddUpdate} loading={isApiLoading} disabled={!newUpdate.trim()} className="w-full" loadingText="Saving...">
                 <CheckCircle className="w-4 h-4 mr-2" />
                 Submit Progress Update
@@ -247,32 +328,11 @@ const TaskDetails = () => {
 
       {activeTab === 'timeline' && (
         <div className="max-w-4xl">
-          <Card className="glass-card">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="w-5 h-5" />
-                Work Progress History
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="relative pl-8 border-l-2 border-gray-200 dark:border-gray-700">
-                {complaint.timeline && complaint.timeline.length > 0 ? (
-                  complaint.timeline.slice().reverse().map((event, index) => (
-                    <div key={event._id} className="mb-8 last:mb-0">
-                      <div className={`absolute w-4 h-4 rounded-full mt-1.5 -left-[9px] border-2 border-white dark:border-gray-800 ${
-                        event.status === 'Resolved' ? 'bg-green-500' :
-                        event.status === 'In Progress' ? 'bg-blue-500' : 'bg-gray-400'
-                      }`} />
-                      <p className="text-sm text-gray-500">{formatDate(event.createdAt)}</p>
-                      <h3 className="font-semibold text-lg">{event.action}</h3>
-                      <p className="text-xs text-gray-500 mb-1">Updated by: {event.updatedBy?.name || 'System'}</p>
-                      {event.notes && <p className="text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 p-3 rounded-lg mt-2">{event.notes}</p>}
-                    </div>
-                  ))
-                ) : <p className="text-gray-500">No work history recorded yet.</p>}
-              </div>
-            </CardContent>
-          </Card>
+          <ComplaintTimeline
+            isEditable={true}
+            complaintId={taskId}
+            timeline={complaint.timeline || []}
+          />
         </div>
       )}
     </div>

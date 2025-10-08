@@ -97,7 +97,7 @@ const SystemAnalytics = () => {
   }));
 
   const departmentChartData = departmentCounts.map(item => ({
-    name: item._id || 'Unknown',
+    name: item.name || 'Unknown',
     complaints: item.count || 0
   }));
 

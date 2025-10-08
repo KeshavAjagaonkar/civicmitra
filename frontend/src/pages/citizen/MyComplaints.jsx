@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { Eye, MessageCircle } from 'lucide-react';
+import { Eye, MessageCircle, Star } from 'lucide-react';
 import useApi from '@/hooks/useApi';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -14,6 +14,7 @@ const MyComplaints = () => {
   const { slug } = useParams();
   const base = slug ? `/${slug}` : '';
   const [complaints, setComplaints] = useState([]);
+  const [feedbacks, setFeedbacks] = useState({});
 
   useEffect(() => {
     const fetchComplaints = async () => {
@@ -21,12 +22,30 @@ const MyComplaints = () => {
         const result = await request('/api/complaints/my');
         if (result.success) {
           setComplaints(result.data);
+
+          // Fetch feedback for all resolved complaints
+          const resolvedComplaints = result.data.filter(c => c.status === 'Resolved');
+          const feedbackPromises = resolvedComplaints.map(async (complaint) => {
+            try {
+              const feedbackResult = await request(`/api/feedback/${complaint._id}`);
+              return { complaintId: complaint._id, feedback: feedbackResult.data };
+            } catch (err) {
+              return { complaintId: complaint._id, feedback: null };
+            }
+          });
+
+          const feedbackResults = await Promise.all(feedbackPromises);
+          const feedbackMap = {};
+          feedbackResults.forEach(({ complaintId, feedback }) => {
+            feedbackMap[complaintId] = feedback;
+          });
+          setFeedbacks(feedbackMap);
         }
       } catch (err) {
-        toast({ 
-          title: 'Failed to fetch complaints', 
-          description: err.message, 
-          variant: 'destructive' 
+        toast({
+          title: 'Failed to fetch complaints',
+          description: err.message,
+          variant: 'destructive'
         });
       }
     };
@@ -170,8 +189,8 @@ const MyComplaints = () => {
                     </div>
                   )}
                   <div className="flex flex-col sm:flex-row gap-2 pt-3 border-t border-gray-200 dark:border-gray-700">
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       size="sm"
                       className="w-full sm:w-auto justify-center"
                       onClick={() => navigate(`${base}/complaints/${complaint._id}`)}
@@ -179,8 +198,8 @@ const MyComplaints = () => {
                       <Eye className="w-4 h-4 mr-2" />
                       View Details
                     </Button>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       size="sm"
                       className="w-full sm:w-auto justify-center"
                       onClick={() => navigate(`${base}/complaints/${complaint._id}?tab=chat`)}
@@ -188,6 +207,22 @@ const MyComplaints = () => {
                       <MessageCircle className="w-4 h-4 mr-2" />
                       Chat
                     </Button>
+                    {complaint.status === 'Resolved' && !feedbacks[complaint._id] && (
+                      <Button
+                        size="sm"
+                        className="w-full sm:w-auto justify-center"
+                        onClick={() => navigate(`${base}/complaints/${complaint._id}/feedback`)}
+                      >
+                        <Star className="w-4 h-4 mr-2" />
+                        Give Feedback
+                      </Button>
+                    )}
+                    {complaint.status === 'Resolved' && feedbacks[complaint._id] && (
+                      <div className="flex items-center gap-1 text-sm text-yellow-600 dark:text-yellow-400">
+                        <Star className="w-4 h-4 fill-yellow-400" />
+                        <span>Rated {feedbacks[complaint._id].rating}/5</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>

@@ -55,6 +55,22 @@ exports.getAnalytics = asyncHandler(async (req, res, next) => {
 
   const departmentCounts = await Complaint.aggregate([
     { $group: { _id: '$department', count: { $sum: 1 } } },
+    {
+      $lookup: {
+        from: 'departments',
+        localField: '_id',
+        foreignField: '_id',
+        as: 'departmentInfo',
+      },
+    },
+    { $unwind: { path: '$departmentInfo', preserveNullAndEmptyArrays: true } },
+    {
+      $project: {
+        _id: 0,
+        name: { $ifNull: ['$departmentInfo.name', 'Unassigned'] },
+        count: 1,
+      },
+    },
   ]);
 
   const resolvedComplaints = await Complaint.find({ status: 'Resolved' });
@@ -62,41 +78,68 @@ exports.getAnalytics = asyncHandler(async (req, res, next) => {
   let resolvedCount = 0;
 
   resolvedComplaints.forEach(complaint => {
-    if (complaint.createdAt && complaint.updatedAt) {
-      totalResolutionTime += (complaint.updatedAt.getTime() - complaint.createdAt.getTime());
-      resolvedCount++;
+    if (complaint.createdAt && complaint.timeline && complaint.timeline.length > 0) {
+      // Find the timeline event where status changed to "Resolved"
+      const resolvedEvent = complaint.timeline.find(
+        event => event.status === 'Resolved' || event.action === 'Resolved'
+      );
+
+      if (resolvedEvent && resolvedEvent.createdAt) {
+        const resolutionTime = resolvedEvent.createdAt.getTime() - complaint.createdAt.getTime();
+        totalResolutionTime += resolutionTime;
+        resolvedCount++;
+      }
     }
   });
 
   const avgResolutionTimeMs = resolvedCount > 0 ? totalResolutionTime / resolvedCount : 0;
   const avgResolutionTimeDays = avgResolutionTimeMs / (1000 * 60 * 60 * 24);
 
-  const workerPerformance = await Complaint.aggregate([
-    { $match: { status: 'Resolved', workerId: { $ne: null } } },
-    {
-      $group: {
-        _id: '$workerId',
-        resolvedCount: { $sum: 1 },
-        avgResolutionTime: { $avg: { $subtract: ['$updatedAt', '$createdAt'] } },
-      },
-    },
-    {
-      $lookup: {
-        from: 'users',
-        localField: '_id',
-        foreignField: '_id',
-        as: 'worker',
-      },
-    },
-    { $unwind: '$worker' },
-    {
-      $project: {
-        'worker.name': 1,
-        resolvedCount: 1,
-        avgResolutionTime: { $divide: ['$avgResolutionTime', 1000 * 60 * 60 * 24] },
-      },
-    },
-  ]);
+  // Get worker performance by calculating from timeline
+  const workerComplaints = await Complaint.find({
+    status: 'Resolved',
+    workerId: { $ne: null }
+  }).populate('workerId', 'name');
+
+  const workerStats = {};
+
+  workerComplaints.forEach(complaint => {
+    if (!complaint.workerId) return;
+
+    const workerId = complaint.workerId._id.toString();
+
+    if (!workerStats[workerId]) {
+      workerStats[workerId] = {
+        _id: complaint.workerId._id,
+        worker: { name: complaint.workerId.name },
+        resolvedCount: 0,
+        totalResolutionTime: 0,
+      };
+    }
+
+    // Find resolved event in timeline
+    const resolvedEvent = complaint.timeline?.find(
+      event => event.status === 'Resolved' || event.action === 'Resolved'
+    );
+
+    if (resolvedEvent && resolvedEvent.createdAt && complaint.createdAt) {
+      const resolutionTime = resolvedEvent.createdAt.getTime() - complaint.createdAt.getTime();
+      workerStats[workerId].totalResolutionTime += resolutionTime;
+      workerStats[workerId].resolvedCount++;
+    } else {
+      // Fallback: count but don't add to time if no timeline
+      workerStats[workerId].resolvedCount++;
+    }
+  });
+
+  const workerPerformance = Object.values(workerStats).map(stat => ({
+    _id: stat._id,
+    worker: stat.worker,
+    resolvedCount: stat.resolvedCount,
+    avgResolutionTime: stat.resolvedCount > 0
+      ? (stat.totalResolutionTime / stat.resolvedCount) / (1000 * 60 * 60 * 24)
+      : 0,
+  }));
 
   res.status(200).json({
     success: true,

@@ -259,20 +259,41 @@ exports.updateComplaintByWorker = asyncHandler(async (req, res, next) => {
   }
 
   if (status) complaint.status = status;
-  
+
+  // Handle uploaded attachments
+  const attachments = [];
+  if (req.files && req.files.length > 0) {
+    for (const file of req.files) {
+      if (file.path) {
+        // Cloudinary upload
+        attachments.push({
+          public_id: file.filename,
+          url: file.path,
+        });
+      } else if (file.filename) {
+        // Local storage
+        attachments.push({
+          public_id: file.filename,
+          url: `/uploads/${file.filename}`,
+        });
+      }
+    }
+  }
+
   complaint.timeline.push({
     action: status === 'Resolved' ? 'Resolved' : 'Update',
     status: status || complaint.status,
     notes: notes || 'Worker provided an update.',
     updatedBy: req.user.id,
+    attachments: attachments,
   });
-  
+
   await complaint.save();
 
   await createAndEmitNotification(complaint.citizenId, 'Progress Update', `An update was posted for your complaint: "${complaint.title}".`, complaint._id);
 
   await complaint.populate('citizenId workerId timeline.updatedBy', 'name email role');
-  
+
   res.status(200).json({ success: true, data: complaint });
 });
 
