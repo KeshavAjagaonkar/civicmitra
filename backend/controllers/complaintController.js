@@ -4,7 +4,7 @@ const asyncHandler = require('../middleware/asyncHandler');
 const ErrorResponse = require('../utils/errorResponse');
 const Chat = require('../models/Chat');
 const { getSocketIO } = require('../utils/socket');
-const { classifyComplaint } = require('../services/aiService');
+const { classifyComplaint, summarizeComplaint, getDepartmentByCategory } = require('../services/aiService');
 const { sendComplaintUpdateEmail, sendWorkerAssignmentEmail } = require('../utils/emailService');
 const User = require('../models/User');
 
@@ -32,12 +32,20 @@ exports.createComplaint = asyncHandler(async (req, res, next) => {
   }
 
   const classification = await classifyComplaint(title, description, category);
-  
+
+  // Get department by category if not provided by user
+  let departmentId = userDepartment;
+  if (!departmentId) {
+    const finalCategory = classification.category || category;
+    departmentId = await getDepartmentByCategory(finalCategory);
+    console.log(`🏢 Auto-assigned department for category "${finalCategory}":`, departmentId ? 'Found' : 'Not found');
+  }
+
   const newComplaintData = {
     title,
     description,
     category: classification.category || category,
-    department: userDepartment || classification.department,
+    department: departmentId,
     priority: priority || classification.priority || 'Medium',
     location,
     citizenId: req.user.id,
@@ -49,6 +57,17 @@ exports.createComplaint = asyncHandler(async (req, res, next) => {
     },
     timeline: [{ action: 'Complaint Submitted', status: 'Submitted', updatedBy: req.user.id }],
   };
+
+  // Generate AI summary (runs in background, doesn't block complaint creation)
+  try {
+    const summary = await summarizeComplaint(title, description, location, classification.category || category);
+    if (summary) {
+      newComplaintData.aiSummary = summary;
+      console.log('✅ AI Summary generated for complaint');
+    }
+  } catch (summaryError) {
+    console.error('⚠️ AI Summary generation failed (complaint will still be created):', summaryError.message);
+  }
 
   if (req.files && req.files.length > 0) {
     newComplaintData.attachments = req.files.map(file => ({ public_id: file.filename, url: file.path }));

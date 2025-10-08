@@ -7,8 +7,8 @@ import { Input } from '@/components/ui/Input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/DropdownMenu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose, DialogTrigger } from '@/components/ui/Dialog';
-import { 
-  Search, Filter, Eye, Edit, Trash2, Download, FileText, Clock, CheckCircle, AlertCircle, Loader2, MoreHorizontal
+import {
+  Search, Filter, Eye, Edit, Trash2, Download, FileText, Clock, CheckCircle, AlertCircle, Loader2, MoreHorizontal, Sparkles
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import useComplaintManagement from '@/hooks/useComplaintManagement';
@@ -113,7 +113,13 @@ const ComplaintManagement = () => {
                     >
                       {c.title}
                     </h3>
-                    <p className="text-sm text-gray-500">In <span className="font-medium text-gray-700">{c.department?.name || 'N/A'}</span> by <span className="font-medium text-gray-700">{c.citizenId?.name || 'N/A'}</span> on {formatDate(c.createdAt)}</p>
+                    {c.aiSummary?.shortSummary && (
+                      <p className="text-sm text-blue-600 dark:text-blue-400 flex items-start gap-1 mt-1">
+                        <Sparkles className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                        <span className="italic">{c.aiSummary.shortSummary}</span>
+                      </p>
+                    )}
+                    <p className="text-sm text-gray-500 mt-1">In <span className="font-medium text-gray-700">{c.department?.name || 'N/A'}</span> by <span className="font-medium text-gray-700">{c.citizenId?.name || 'N/A'}</span> on {formatDate(c.createdAt)}</p>
                   </div>
                   <Dialog open={complaintToDelete?._id === c._id} onOpenChange={() => setComplaintToDelete(null)}>
                     <DropdownMenu>

@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/Label';
 import FormFieldBox from '@/components/FormFieldBox';
 import useApi from '@/hooks/useApi';
 import { useToast } from '@/components/ui/use-toast';
-import { ArrowLeft, Star } from 'lucide-react';
+import { ArrowLeft, Star, Sparkles, AlertCircle, MapPin, TrendingUp } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/Dialog';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -218,6 +218,56 @@ const ComplaintDetails = () => {
               <CardTitle>Details</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 bg-white/50 dark:bg-gray-900/50 rounded-lg p-6">
+              {/* AI Summary Section */}
+              {complaint.aiSummary && (
+                <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <div className="flex items-start gap-3">
+                    <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1 space-y-3">
+                      <div>
+                        <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-1">AI Summary</h4>
+                        <p className="text-sm text-blue-800 dark:text-blue-200">{complaint.aiSummary.shortSummary}</p>
+                      </div>
+
+                      {complaint.aiSummary.keyPoints && complaint.aiSummary.keyPoints.length > 0 && (
+                        <div>
+                          <p className="text-xs font-semibold text-blue-900 dark:text-blue-100 mb-1">Key Points:</p>
+                          <ul className="space-y-1">
+                            {complaint.aiSummary.keyPoints.map((point, idx) => (
+                              <li key={idx} className="text-xs text-blue-700 dark:text-blue-300 flex items-start gap-2">
+                                <span className="text-blue-500 mt-0.5">•</span>
+                                <span>{point}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      <div className="flex flex-wrap gap-2">
+                        {complaint.aiSummary.extractedInfo?.urgency && (
+                          <Badge variant="outline" className="text-xs bg-white/50 dark:bg-gray-800/50 border-blue-300 dark:border-blue-700">
+                            <AlertCircle className="w-3 h-3 mr-1" />
+                            {complaint.aiSummary.extractedInfo.urgency} Urgency
+                          </Badge>
+                        )}
+                        {complaint.aiSummary.sentiment && complaint.aiSummary.sentiment !== 'Neutral' && (
+                          <Badge variant="outline" className="text-xs bg-white/50 dark:bg-gray-800/50 border-blue-300 dark:border-blue-700">
+                            <TrendingUp className="w-3 h-3 mr-1" />
+                            {complaint.aiSummary.sentiment}
+                          </Badge>
+                        )}
+                        {complaint.aiSummary.extractedInfo?.affectedArea && (
+                          <Badge variant="outline" className="text-xs bg-white/50 dark:bg-gray-800/50 border-blue-300 dark:border-blue-700">
+                            <MapPin className="w-3 h-3 mr-1" />
+                            {complaint.aiSummary.extractedInfo.affectedArea}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="flex justify-between items-center">
                 <strong>Status:</strong>
                 {(userRole === 'staff' || userRole === 'worker') ? (

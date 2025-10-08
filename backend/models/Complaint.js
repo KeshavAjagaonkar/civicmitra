@@ -131,6 +131,28 @@ const ComplaintSchema = new mongoose.Schema({
       type: String,
     },
   },
+  aiSummary: {
+    shortSummary: {
+      type: String,
+      maxlength: [200, 'Summary cannot be more than 200 characters'],
+    },
+    keyPoints: [{
+      type: String,
+    }],
+    extractedInfo: {
+      mainIssue: String,
+      location: String,
+      urgency: String,
+      affectedArea: String,
+    },
+    sentiment: {
+      type: String,
+      enum: ['Neutral', 'Concerned', 'Frustrated', 'Angry', 'Urgent'],
+    },
+    generatedAt: {
+      type: Date,
+    },
+  },
   resolutionProof: [
     {
       public_id: {
