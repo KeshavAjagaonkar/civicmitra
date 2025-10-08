@@ -17,6 +17,7 @@ const navItems = {
     { name: 'Dashboard', icon: Home, path: '/staff' },
     { name: 'Complaints', icon: FileText, path: '/staff/complaints' },
     { name: 'Workers', icon: Users, path: '/staff/workers' },
+    { name: 'Statistics', icon: BarChart3, path: '/staff/stats' },
     { name: 'Chat', icon: MessageSquare, path: '/staff/chat' },
   ],
   worker: [

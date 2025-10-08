@@ -8,7 +8,7 @@ import {
   TableRow,
 } from '@/components/ui/Table';
 import { Badge } from '@/components/ui/Badge';
-import { Eye, UserPlus } from 'lucide-react';
+import { Eye, UserPlus, Edit } from 'lucide-react';
 import { Button } from './ui/Button';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -167,6 +167,17 @@ const ComplaintTable = ({ filter, limit }) => {
                       >
                         <UserPlus className="h-4 w-4 mr-1" />
                         <span>Assign</span>
+                      </Button>
+                    )}
+                    {user?.role === 'staff' && complaint.workerId && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="rounded-xl"
+                        onClick={() => navigate(`/${user.department?.slug}/staff/complaints/${complaint._id}/edit-assignment`)}
+                      >
+                        <Edit className="h-4 w-4 mr-1" />
+                        <span>Edit</span>
                       </Button>
                     )}
                   </div>

@@ -26,6 +26,10 @@ const ComplaintManagement = () => {
   const [workerFilter, setWorkerFilter] = useState('all');
   const [isLoading, setIsLoading] = useState(true);
 
+  // Get the base path with department slug
+  const departmentSlug = user?.department?.slug;
+  const basePath = departmentSlug ? `/${departmentSlug}/staff` : '/staff';
+
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
@@ -245,8 +249,10 @@ const ComplaintManagement = () => {
                     </div>
                     <div className="flex gap-2">
                       <Badge variant={getStatusVariant(complaint.status)} className="flex items-center gap-1">
-                        {getStatusIcon(complaint.status)}
-                        {complaint.status}
+                        <span className="flex items-center gap-1">
+                          {getStatusIcon(complaint.status)}
+                          {complaint.status}
+                        </span>
                       </Badge>
                       <Badge variant="outline" className={getPriorityColor(complaint.priority)}>{complaint.priority}</Badge>
                     </div>
@@ -288,19 +294,19 @@ const ComplaintManagement = () => {
                     </div>
                   </div>
                   <div className="flex gap-2 pt-4 border-t">
-                    <Button variant="outline" size="sm" onClick={() => navigate('/staff/complaints/' + complaint._id)}>
+                    <Button variant="outline" size="sm" onClick={() => navigate(`${basePath}/complaints/${complaint._id}`)}>
                       <Eye className="w-4 h-4 mr-2" />View Details
                     </Button>
                     {!complaint.workerId ? (
-                      <Button size="sm" onClick={() => navigate('/staff/complaints/' + complaint._id + '/assign')}>
+                      <Button size="sm" onClick={() => navigate(`${basePath}/complaints/${complaint._id}/assign`)}>
                         <UserPlus className="w-4 h-4 mr-2" />Assign Worker
                       </Button>
                     ) : (
-                      <Button variant="outline" size="sm" onClick={() => navigate('/staff/complaints/' + complaint._id + '/assign')}>
+                      <Button variant="outline" size="sm" onClick={() => navigate(`${basePath}/complaints/${complaint._id}/edit-assignment`)}>
                         <User className="w-4 h-4 mr-2" />Reassign Worker
                       </Button>
                     )}
-                    <Button variant="outline" size="sm" onClick={() => navigate('/staff/complaints/' + complaint._id + '/chat')}>
+                    <Button variant="outline" size="sm" onClick={() => navigate(`${basePath}/chat?complaintId=${complaint._id}`)}>
                       <MessageSquare className="w-4 h-4 mr-2" />Chat
                     </Button>
                   </div>

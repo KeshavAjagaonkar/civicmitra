@@ -65,8 +65,10 @@ const useDashboardStats = () => {
   };
 
   useEffect(() => {
-    fetchStats();
-  }, []);
+    if (user) {
+      fetchStats();
+    }
+  }, [user]);
 
   const refetch = () => {
     fetchStats();

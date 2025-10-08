@@ -167,24 +167,82 @@ exports.updateComplaintStatus = asyncHandler(async (req, res, next) => {
 // @route   PATCH /api/complaints/:id/assign-worker
 // @access  Private (Staff, Admin)
 exports.assignWorkerToComplaint = asyncHandler(async (req, res, next) => {
-  const { workerId } = req.body;
+  const { workerId, deadline } = req.body;
   let complaint = await Complaint.findById(req.params.id);
   if (!complaint) { return next(new ErrorResponse(`Complaint not found`, 404)); }
 
   complaint.workerId = workerId;
+  if (deadline) {
+    complaint.deadline = deadline;
+  }
   if (complaint.status === 'Submitted') {
     complaint.status = 'In Progress';
   }
   complaint.timeline.push({
     action: 'Assigned to Worker',
     status: complaint.status,
-    notes: `Assigned to a field worker by ${req.user.name}.`,
+    notes: `Assigned to a field worker by ${req.user.name}.${deadline ? ` Deadline: ${new Date(deadline).toLocaleDateString()}` : ''}`,
     updatedBy: req.user.id,
   });
   await complaint.save();
 
-  await createAndEmitNotification(workerId, 'New Task Assigned', `You have been assigned: "${complaint.title}".`, complaint._id);
+  await createAndEmitNotification(workerId, 'New Task Assigned', `You have been assigned: "${complaint.title}".${deadline ? ` Deadline: ${new Date(deadline).toLocaleDateString()}` : ''}`, complaint._id);
   await createAndEmitNotification(complaint.citizenId, 'Worker Assigned', `A worker is now assigned to your complaint: "${complaint.title}".`, complaint._id);
+
+  res.status(200).json({ success: true, data: complaint });
+});
+
+// @desc    Update deadline and/or reassign worker by Staff/Admin
+// @route   PATCH /api/complaints/:id/update-assignment
+// @access  Private (Staff, Admin)
+exports.updateAssignment = asyncHandler(async (req, res, next) => {
+  const { workerId, deadline } = req.body;
+  let complaint = await Complaint.findById(req.params.id);
+  if (!complaint) { return next(new ErrorResponse(`Complaint not found`, 404)); }
+
+  const updates = [];
+
+  if (workerId && workerId !== complaint.workerId?.toString()) {
+    const oldWorkerId = complaint.workerId;
+    complaint.workerId = workerId;
+    updates.push(`Reassigned to a different worker`);
+
+    // Notify new worker
+    await createAndEmitNotification(workerId, 'New Task Assigned', `You have been assigned: "${complaint.title}".`, complaint._id);
+
+    // Notify old worker if exists
+    if (oldWorkerId) {
+      await createAndEmitNotification(oldWorkerId, 'Task Reassigned', `The complaint "${complaint.title}" has been reassigned to another worker.`, complaint._id);
+    }
+  }
+
+  if (deadline) {
+    const oldDeadline = complaint.deadline;
+    complaint.deadline = deadline;
+    if (oldDeadline) {
+      updates.push(`Deadline updated to ${new Date(deadline).toLocaleDateString()}`);
+    } else {
+      updates.push(`Deadline set to ${new Date(deadline).toLocaleDateString()}`);
+    }
+
+    // Notify worker about deadline change
+    if (complaint.workerId) {
+      await createAndEmitNotification(complaint.workerId, 'Deadline Updated', `Deadline for "${complaint.title}" has been updated to ${new Date(deadline).toLocaleDateString()}.`, complaint._id);
+    }
+  }
+
+  if (updates.length > 0) {
+    complaint.timeline.push({
+      action: 'Update',
+      status: complaint.status,
+      notes: updates.join('. ') + `. Updated by ${req.user.name}.`,
+      updatedBy: req.user.id,
+    });
+    await complaint.save();
+
+    // Notify citizen
+    await createAndEmitNotification(complaint.citizenId, 'Complaint Updated', `Your complaint "${complaint.title}" has been updated.`, complaint._id);
+  }
 
   res.status(200).json({ success: true, data: complaint });
 });
@@ -282,5 +340,175 @@ exports.getRecentComplaints = asyncHandler(async (req, res, next) => {
         .sort({ createdAt: -1 })
         .limit(5);
     res.status(200).json({ success: true, data: complaints });
+});
+
+// @desc    Get detailed worker performance report
+// @route   GET /api/complaints/worker-reports
+// @access  Private (Worker)
+exports.getWorkerReports = asyncHandler(async (req, res, next) => {
+    const workerId = req.user.id;
+    const { period = 'thisMonth', category = 'all' } = req.query;
+
+    // Calculate date range based on period
+    const now = new Date();
+    let startDate;
+
+    switch (period) {
+        case 'thisMonth':
+            startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+            break;
+        case 'lastMonth':
+            startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            const endDate = new Date(now.getFullYear(), now.getMonth(), 0);
+            break;
+        case 'thisYear':
+            startDate = new Date(now.getFullYear(), 0, 1);
+            break;
+        default:
+            startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    }
+
+    // Build query
+    let query = { workerId };
+    if (period === 'lastMonth') {
+        const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+        query.createdAt = { $gte: startDate, $lte: lastMonthEnd };
+    } else {
+        query.createdAt = { $gte: startDate };
+    }
+
+    if (category !== 'all') {
+        query.category = category;
+    }
+
+    // Get all complaints for the worker in the period
+    const allComplaints = await Complaint.find(query)
+        .populate('citizenId', 'name email')
+        .populate('department', 'name')
+        .populate('workerId', 'name email')
+        .sort({ createdAt: -1 });
+
+    // Calculate statistics
+    const totalTasks = allComplaints.length;
+    const completedTasks = allComplaints.filter(c => c.status === 'Resolved').length;
+    const inProgressTasks = allComplaints.filter(c => c.status === 'In Progress').length;
+    const overdueTasks = allComplaints.filter(c =>
+        c.deadline && new Date(c.deadline) < now && c.status !== 'Resolved'
+    ).length;
+
+    // Calculate average completion time (for resolved complaints)
+    const resolvedComplaints = allComplaints.filter(c => c.status === 'Resolved');
+    let averageCompletionTime = 'N/A';
+    if (resolvedComplaints.length > 0) {
+        const totalDays = resolvedComplaints.reduce((sum, c) => {
+            const created = new Date(c.createdAt);
+            const resolved = c.timeline?.find(t => t.status === 'Resolved');
+            if (resolved) {
+                const resolvedDate = new Date(resolved.date);
+                const days = (resolvedDate - created) / (1000 * 60 * 60 * 24);
+                return sum + days;
+            }
+            return sum;
+        }, 0);
+        const avgDays = (totalDays / resolvedComplaints.length).toFixed(1);
+        averageCompletionTime = `${avgDays} days`;
+    }
+
+    // Calculate efficiency (completion rate)
+    const efficiency = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+    // Calculate average rating (from feedback)
+    const ratedComplaints = allComplaints.filter(c => c.feedback && c.feedback.rating);
+    const averageRating = ratedComplaints.length > 0
+        ? (ratedComplaints.reduce((sum, c) => sum + c.feedback.rating, 0) / ratedComplaints.length).toFixed(1)
+        : 0;
+
+    // Get category breakdown
+    const categoryBreakdown = {};
+    allComplaints.forEach(c => {
+        if (!categoryBreakdown[c.category]) {
+            categoryBreakdown[c.category] = { total: 0, completed: 0 };
+        }
+        categoryBreakdown[c.category].total++;
+        if (c.status === 'Resolved') {
+            categoryBreakdown[c.category].completed++;
+        }
+    });
+
+    const taskBreakdown = Object.keys(categoryBreakdown).map(cat => ({
+        category: cat,
+        total: categoryBreakdown[cat].total,
+        completed: categoryBreakdown[cat].completed,
+        percentage: categoryBreakdown[cat].total > 0
+            ? Math.round((categoryBreakdown[cat].completed / categoryBreakdown[cat].total) * 100)
+            : 0
+    }));
+
+    // Get monthly trend (last 6 months)
+    const monthlyTrend = [];
+    for (let i = 5; i >= 0; i--) {
+        const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
+
+        const monthComplaints = await Complaint.find({
+            workerId,
+            createdAt: { $gte: monthStart, $lte: monthEnd }
+        });
+
+        const monthCompleted = monthComplaints.filter(c => c.status === 'Resolved').length;
+        const monthTotal = monthComplaints.length;
+        const monthEfficiency = monthTotal > 0 ? Math.round((monthCompleted / monthTotal) * 100) : 0;
+
+        monthlyTrend.push({
+            month: monthStart.toLocaleString('en-US', { month: 'short' }),
+            completed: monthCompleted,
+            total: monthTotal,
+            efficiency: monthEfficiency
+        });
+    }
+
+    // Get recent tasks with details
+    const recentTasks = allComplaints.slice(0, 10).map(c => {
+        const createdDate = new Date(c.createdAt);
+        const resolvedEntry = c.timeline?.find(t => t.status === 'Resolved');
+        let completionTime = 'N/A';
+
+        if (resolvedEntry) {
+            const resolvedDate = new Date(resolvedEntry.date);
+            const days = ((resolvedDate - createdDate) / (1000 * 60 * 60 * 24)).toFixed(1);
+            completionTime = `${days} days`;
+        } else if (c.status === 'In Progress') {
+            const currentDays = ((now - createdDate) / (1000 * 60 * 60 * 24)).toFixed(1);
+            completionTime = `${currentDays} days`;
+        }
+
+        return {
+            id: c._id,
+            title: c.title,
+            category: c.category,
+            status: c.status,
+            completionTime,
+            rating: c.feedback?.rating || null,
+            date: c.createdAt
+        };
+    });
+
+    res.status(200).json({
+        success: true,
+        data: {
+            summary: {
+                totalTasks,
+                completedTasks,
+                inProgressTasks,
+                overdueTasks,
+                averageCompletionTime,
+                efficiency,
+                rating: parseFloat(averageRating)
+            },
+            taskBreakdown,
+            monthlyTrend,
+            recentTasks
+        }
+    });
 });
 

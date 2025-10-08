@@ -81,10 +81,11 @@ app.use(cors(corsOptions)); // Use configured CORS for Express
 app.use(helmet({ crossOriginResourcePolicy: false }));
 app.use(express.json());
 
-// Rate Limiting
+// Rate Limiting - More lenient in development to accommodate React Strict Mode and multiple hooks
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 200, // limit each IP to 200 requests per windowMs
+  max: process.env.NODE_ENV === 'development' ? 1000 : 200, // Higher limit in dev due to React Strict Mode doubling API calls
+  message: 'Too many requests, please try again later.',
 });
 app.use('/api', limiter);
 

@@ -98,6 +98,9 @@ const ComplaintSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
   },
+  deadline: {
+    type: Date,
+  },
   timeline: [TimelineEventSchema],
   aiClassification: {
     confidence: {

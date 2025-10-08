@@ -16,6 +16,7 @@ const AssignWorker = () => {
   const [complaint, setComplaint] = useState(null);
   const [workers, setWorkers] = useState([]);
   const [selectedWorkerId, setSelectedWorkerId] = useState('');
+  const [deadline, setDeadline] = useState('');
   const [isAssigning, setIsAssigning] = useState(false);
 
   // Fetch complaint details and then available workers
@@ -51,10 +52,14 @@ const AssignWorker = () => {
     }
     setIsAssigning(true);
     try {
+      const payload = { workerId: selectedWorkerId };
+      if (deadline) {
+        payload.deadline = deadline;
+      }
       const response = await request(
         `/api/complaints/${complaintId}/assign-worker`,
         'PATCH',
-        { workerId: selectedWorkerId }
+        payload
       );
       if (response.success) {
         toast({ title: "Success!", description: `Worker has been assigned to complaint #${complaint._id.slice(-6)}.` });
@@ -114,6 +119,18 @@ const AssignWorker = () => {
                 )}
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="deadline" className="font-medium">Deadline (Optional)</label>
+            <input
+              type="date"
+              id="deadline"
+              value={deadline}
+              onChange={(e) => setDeadline(e.target.value)}
+              min={new Date().toISOString().split('T')[0]}
+              className="w-full p-2 border rounded-md glass-input"
+            />
           </div>
 
           <Button onClick={handleAssign} className="w-full" loading={isAssigning} disabled={!selectedWorkerId}>

@@ -45,6 +45,8 @@ import SystemAnalytics from './pages/admin/SystemAnalytics';
 import StaffDashboard from './pages/staff/StaffDashboard';
 import StaffComplaintManagement from './pages/staff/ComplaintManagement';
 import AssignWorker from './pages/staff/AssignWorker';
+import EditAssignment from './pages/staff/EditAssignment';
+import StaffStats from './pages/staff/StaffStats';
 import StaffChatPage from './pages/staff/ChatPage';
 import WorkerManagement from './pages/staff/WorkerManagement';
 
@@ -122,6 +124,8 @@ function App() {
             <Route path="/:departmentSlug/staff/complaints" element={<StaffRoute><StaffComplaintManagement /></StaffRoute>} />
             <Route path="/:departmentSlug/staff/complaints/:id" element={<StaffRoute><ComplaintDetails /></StaffRoute>} />
             <Route path="/:departmentSlug/staff/complaints/:id/assign" element={<StaffRoute><AssignWorker /></StaffRoute>} />
+            <Route path="/:departmentSlug/staff/complaints/:id/edit-assignment" element={<StaffRoute><EditAssignment /></StaffRoute>} />
+            <Route path="/:departmentSlug/staff/stats" element={<StaffRoute><StaffStats /></StaffRoute>} />
             <Route path="/:departmentSlug/staff/workers" element={<StaffRoute><WorkerManagement /></StaffRoute>} />
             <Route path="/:departmentSlug/staff/complaints/:id/chat" element={<StaffRoute><StaffChatPage /></StaffRoute>} />
             <Route path="/:departmentSlug/staff/chat" element={<StaffRoute><StaffChatPage /></StaffRoute>} />
@@ -132,6 +136,7 @@ function App() {
             <Route path="/staff" element={<StaffRoute><StaffDashboard /></StaffRoute>} />
             <Route path="/staff/complaints" element={<StaffRoute><StaffComplaintManagement /></StaffRoute>} />
             <Route path="/staff/complaints/:id" element={<StaffRoute><ComplaintDetails /></StaffRoute>} />
+            <Route path="/staff/stats" element={<StaffRoute><StaffStats /></StaffRoute>} />
             <Route path="/staff/workers" element={<StaffRoute><WorkerManagement /></StaffRoute>} />
             
             {/* ==== WORKER ROUTES ==== */}

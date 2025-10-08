@@ -214,6 +214,14 @@ const WorkerDashboard = () => {
                         <span>Citizen: {complaint.citizenId?.name || 'N/A'}</span>
                         <span>Assigned: {formatDate(complaint.createdAt)}</span>
                       </div>
+                      {complaint.deadline && (
+                        <div className="text-xs mb-3">
+                          <span className="font-medium">Deadline: </span>
+                          <span className={`${new Date(complaint.deadline) < new Date() ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>
+                            {formatDate(complaint.deadline)}
+                          </span>
+                        </div>
+                      )}
                       <div className="flex gap-2 mt-3">
                         <Button
                           variant="default"

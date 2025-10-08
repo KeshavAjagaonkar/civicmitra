@@ -26,6 +26,8 @@ const WorkerManagement = () => {
   const [unassignedComplaints, setUnassignedComplaints] = useState([]);
   const [selectedComplaint, setSelectedComplaint] = useState('');
   const [assigning, setAssigning] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('all'); // all, active, inactive
+  const [complaints, setComplaints] = useState([]);
 
   const fetchWorkers = async () => {
     try {
@@ -38,6 +40,12 @@ const WorkerManagement = () => {
 
       if (response.success) {
         setWorkers(response.data || []);
+      }
+
+      // Fetch all complaints to determine worker activity
+      const complaintsRes = await request('/api/complaints/all', 'GET');
+      if (complaintsRes.success) {
+        setComplaints(complaintsRes.data || []);
       }
     } catch (err) {
       console.error('Failed to fetch workers:', err);
@@ -128,6 +136,32 @@ const WorkerManagement = () => {
     );
   };
 
+  // Determine if a worker is active based on assigned complaints
+  const isWorkerActive = (workerId) => {
+    return complaints.some(c =>
+      c.workerId?._id === workerId &&
+      c.status !== 'Resolved' &&
+      c.status !== 'Closed'
+    );
+  };
+
+  // Get assigned complaint count for a worker
+  const getAssignedCount = (workerId) => {
+    return complaints.filter(c =>
+      c.workerId?._id === workerId &&
+      c.status !== 'Resolved' &&
+      c.status !== 'Closed'
+    ).length;
+  };
+
+  // Filter workers based on status filter
+  const filteredWorkers = workers.filter(worker => {
+    if (statusFilter === 'all') return true;
+    if (statusFilter === 'active') return isWorkerActive(worker._id);
+    if (statusFilter === 'inactive') return !isWorkerActive(worker._id);
+    return true;
+  });
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -152,16 +186,28 @@ const WorkerManagement = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold">Worker Management</h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
             Manage workers in {user?.department?.name || 'your department'}
           </p>
         </div>
-        <Button onClick={fetchWorkers} variant="outline">
-          Refresh
-        </Button>
+        <div className="flex gap-2">
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Workers</SelectItem>
+              <SelectItem value="active">Active Only</SelectItem>
+              <SelectItem value="inactive">Inactive Only</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button onClick={fetchWorkers} variant="outline">
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Summary Cards */}
@@ -183,7 +229,7 @@ const WorkerManagement = () => {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-green-600">
-              {workers.filter(w => w.isActive).length}
+              {workers.filter(w => isWorkerActive(w._id)).length}
             </div>
           </CardContent>
         </Card>
@@ -202,10 +248,10 @@ const WorkerManagement = () => {
       {/* Workers Table */}
       <Card className="glass-card">
         <CardHeader>
-          <CardTitle>Department Workers</CardTitle>
+          <CardTitle>Department Workers ({filteredWorkers.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          {workers.length === 0 ? (
+          {filteredWorkers.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
               <User className="w-12 h-12 mx-auto mb-3 text-gray-400" />
               <h3 className="text-lg font-semibold mb-2">No Workers Found</h3>
@@ -220,13 +266,13 @@ const WorkerManagement = () => {
                     <TableHead>Worker ID</TableHead>
                     <TableHead>Contact</TableHead>
                     <TableHead>Specialization</TableHead>
-                    <TableHead>Experience</TableHead>
+                    <TableHead>Assigned Tasks</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {workers.map((worker) => (
+                  {filteredWorkers.map((worker) => (
                     <TableRow key={worker._id}>
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -261,20 +307,18 @@ const WorkerManagement = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Calendar className="w-4 h-4 text-gray-500" />
-                          <span>{worker.experienceYears || 0} years</span>
-                        </div>
+                        <Badge variant="outline" className="font-semibold">
+                          {getAssignedCount(worker._id)} active task{getAssignedCount(worker._id) !== 1 ? 's' : ''}
+                        </Badge>
                       </TableCell>
                       <TableCell>
-                        {getStatusBadge(worker.isActive)}
+                        {getStatusBadge(isWorkerActive(worker._id))}
                       </TableCell>
                       <TableCell className="text-right">
                         <Button
                           size="sm"
                           variant="default"
                           onClick={() => handleOpenAssignDialog(worker)}
-                          disabled={!worker.isActive}
                         >
                           <UserPlus className="w-4 h-4 mr-2" />
                           Assign Task
