@@ -55,18 +55,50 @@ const useUserManagement = () => {
     }
   };
 
+  const updateUser = async (userId, userData) => {
+    try {
+      const response = await request(`/api/admin/users/${userId}`, 'PUT', userData);
+
+      if (response?.success) {
+        setUsers(prev => prev.map(user =>
+          user._id === userId ? response.data : user
+        ));
+        return { success: true, data: response.data };
+      }
+      return { success: false, error: response.message || 'Failed to update user' };
+    } catch (err) {
+      console.error('Failed to update user:', err);
+      return { success: false, error: err.message || 'Failed to update user' };
+    }
+  };
+
   const deleteUser = async (userId) => {
     try {
       const response = await request(`/api/admin/users/${userId}`, 'DELETE');
 
       if (response?.success) {
         setUsers(prev => prev.filter(user => user._id !== userId));
-        return { success: true };
+        return { success: true, message: response.message };
       }
       return { success: false, error: response.message || 'Failed to delete user' };
     } catch (err) {
       console.error('Failed to delete user:', err);
       return { success: false, error: err.message || 'Failed to delete user' };
+    }
+  };
+
+  const bulkDeleteUsers = async (userIds) => {
+    try {
+      const response = await request('/api/admin/users/bulk-delete', 'POST', { userIds });
+
+      if (response?.success) {
+        setUsers(prev => prev.filter(user => !userIds.includes(user._id)));
+        return { success: true, message: response.message, deletedCount: response.data.deletedCount };
+      }
+      return { success: false, error: response.message || 'Failed to bulk delete users' };
+    } catch (err) {
+      console.error('Failed to bulk delete users:', err);
+      return { success: false, error: err.message || 'Failed to bulk delete users' };
     }
   };
 
@@ -84,8 +116,10 @@ const useUserManagement = () => {
     error,
     refetch,
     createUser,
+    updateUser,
     updateUserRole,
-    deleteUser
+    deleteUser,
+    bulkDeleteUsers
   };
 };
 

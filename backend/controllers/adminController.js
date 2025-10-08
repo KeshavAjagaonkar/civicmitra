@@ -174,6 +174,35 @@ exports.updateUserRole = asyncHandler(async (req, res, next) => {
   });
 });
 
+// @desc    Update user
+// @route   PUT /api/admin/users/:id
+// @access  Private/Admin
+exports.updateUser = asyncHandler(async (req, res, next) => {
+  const { name, email, phone, address, role, department, isActive } = req.body;
+
+  const user = await User.findById(req.params.id);
+
+  if (!user) {
+    return next(new ErrorResponse(`User not found with id of ${req.params.id}`, 404));
+  }
+
+  // Update fields if provided
+  if (name) user.name = name;
+  if (email) user.email = email;
+  if (phone) user.phone = phone;
+  if (address) user.address = address;
+  if (role) user.role = role;
+  if (department !== undefined) user.department = department;
+  if (isActive !== undefined) user.isActive = isActive;
+
+  await user.save();
+
+  res.status(200).json({
+    success: true,
+    data: user,
+  });
+});
+
 // @desc    Delete user
 // @route   DELETE /api/admin/users/:id
 // @access  Private/Admin
@@ -184,11 +213,41 @@ exports.deleteUser = asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse(`User not found with id of ${req.params.id}`, 404));
   }
 
+  // Don't allow deleting yourself
+  if (user._id.toString() === req.user.id) {
+    return next(new ErrorResponse('Cannot delete your own account', 400));
+  }
+
   await user.deleteOne();
 
   res.status(200).json({
     success: true,
+    message: 'User deleted successfully',
     data: {},
+  });
+});
+
+// @desc    Bulk delete users
+// @route   POST /api/admin/users/bulk-delete
+// @access  Private/Admin
+exports.bulkDeleteUsers = asyncHandler(async (req, res, next) => {
+  const { userIds } = req.body;
+
+  if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+    return next(new ErrorResponse('Please provide an array of user IDs', 400));
+  }
+
+  // Don't allow deleting yourself
+  if (userIds.includes(req.user.id)) {
+    return next(new ErrorResponse('Cannot delete your own account', 400));
+  }
+
+  const result = await User.deleteMany({ _id: { $in: userIds } });
+
+  res.status(200).json({
+    success: true,
+    message: `${result.deletedCount} user(s) deleted successfully`,
+    data: { deletedCount: result.deletedCount },
   });
 });
 
@@ -340,5 +399,79 @@ exports.getSystemAlerts = asyncHandler(async (req, res, next) => {
 exports.createSystemAlert = asyncHandler(async (req, res, next) => {
   const alert = await SystemAlert.create({ ...req.body, createdBy: req.user.id });
   res.status(201).json({ success: true, data: alert });
+});
+
+// @desc    Delete complaint
+// @route   DELETE /api/admin/complaints/:id
+// @access  Private/Admin
+exports.deleteComplaint = asyncHandler(async (req, res, next) => {
+  const complaint = await Complaint.findById(req.params.id);
+
+  if (!complaint) {
+    return next(new ErrorResponse(`Complaint not found with id of ${req.params.id}`, 404));
+  }
+
+  await complaint.deleteOne();
+
+  res.status(200).json({
+    success: true,
+    message: 'Complaint deleted successfully',
+    data: {},
+  });
+});
+
+// @desc    Update complaint (admin override)
+// @route   PUT /api/admin/complaints/:id
+// @access  Private/Admin
+exports.updateComplaint = asyncHandler(async (req, res, next) => {
+  const { title, description, category, priority, status, department, workerId } = req.body;
+
+  let complaint = await Complaint.findById(req.params.id);
+
+  if (!complaint) {
+    return next(new ErrorResponse(`Complaint not found with id of ${req.params.id}`, 404));
+  }
+
+  // Admin can update any field
+  const updateData = {};
+  if (title !== undefined) updateData.title = title;
+  if (description !== undefined) updateData.description = description;
+  if (category !== undefined) updateData.category = category;
+  if (priority !== undefined) updateData.priority = priority;
+  if (status !== undefined) updateData.status = status;
+  if (department !== undefined) updateData.department = department;
+  if (workerId !== undefined) updateData.workerId = workerId;
+
+  complaint = await Complaint.findByIdAndUpdate(
+    req.params.id,
+    updateData,
+    { new: true, runValidators: true }
+  ).populate('citizenId', 'name email')
+   .populate('department', 'name')
+   .populate('workerId', 'name');
+
+  res.status(200).json({
+    success: true,
+    data: complaint,
+  });
+});
+
+// @desc    Bulk delete complaints
+// @route   POST /api/admin/complaints/bulk-delete
+// @access  Private/Admin
+exports.bulkDeleteComplaints = asyncHandler(async (req, res, next) => {
+  const { complaintIds } = req.body;
+
+  if (!complaintIds || !Array.isArray(complaintIds) || complaintIds.length === 0) {
+    return next(new ErrorResponse('Please provide an array of complaint IDs', 400));
+  }
+
+  const result = await Complaint.deleteMany({ _id: { $in: complaintIds } });
+
+  res.status(200).json({
+    success: true,
+    message: `${result.deletedCount} complaint(s) deleted successfully`,
+    data: { deletedCount: result.deletedCount },
+  });
 });
 

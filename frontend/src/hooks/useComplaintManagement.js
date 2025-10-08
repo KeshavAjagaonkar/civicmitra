@@ -48,16 +48,43 @@ const useComplaintManagement = () => {
     }
   };
 
+  const updateComplaint = async (complaintId, updateData) => {
+    try {
+      const response = await request(`/api/admin/complaints/${complaintId}`, 'PUT', updateData);
+
+      if (response?.success) {
+        setComplaints(prev => prev.map(c =>
+          c._id === complaintId ? response.data : c
+        ));
+        return { success: true, data: response.data };
+      }
+      return { success: false, error: response.message };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  };
+
   const deleteComplaint = async (complaintId) => {
     try {
-      // This endpoint needs to be created in the backend
-      const response = await request(`/api/admin/complaints/${complaintId}`, {
-        method: 'DELETE',
-      });
-      
+      const response = await request(`/api/admin/complaints/${complaintId}`, 'DELETE');
+
       if (response?.success) {
         setComplaints(prev => prev.filter(c => c._id !== complaintId));
-        return { success: true };
+        return { success: true, message: response.message };
+      }
+      return { success: false, error: response.message };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  };
+
+  const bulkDeleteComplaints = async (complaintIds) => {
+    try {
+      const response = await request('/api/admin/complaints/bulk-delete', 'POST', { complaintIds });
+
+      if (response?.success) {
+        setComplaints(prev => prev.filter(c => !complaintIds.includes(c._id)));
+        return { success: true, message: response.message, deletedCount: response.data.deletedCount };
       }
       return { success: false, error: response.message };
     } catch (err) {
@@ -81,8 +108,10 @@ const useComplaintManagement = () => {
     loading: loading || apiIsLoading,
     error,
     refetch: fetchComplaints,
+    updateComplaint,
     updateComplaintStatus,
     deleteComplaint,
+    bulkDeleteComplaints,
     stats,
   };
 };
