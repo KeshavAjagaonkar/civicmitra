@@ -1,7 +1,8 @@
-import {React, useState } from 'react';
+import React, { useState } from 'react';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/Table';
+import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/DropdownMenu';
@@ -9,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
-import { MoreHorizontal, PlusCircle, Loader2, AlertTriangle, Trash2, Edit } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Loader2, AlertTriangle, Trash2, Edit, UserCheck, Wrench, User } from 'lucide-react';
 import { useUsers } from '@/hooks/useUniversalApi';
 import useUserManagement from '@/hooks/useUserManagement';
 import { useToast } from '@/components/ui/use-toast';
@@ -165,7 +166,7 @@ const UserManagement = () => {
                                <Wrench className="mr-2 h-4 w-4" /> Make Worker
                               </DropdownMenuItem>
                               <DropdownMenuItem onSelect={() => handleRoleChange(user._id, 'citizen')}>
-                                <CitizenIcon className="mr-2 h-4 w-4" /> Make Citizen
+                                <User className="mr-2 h-4 w-4" /> Make Citizen
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DialogTrigger asChild>

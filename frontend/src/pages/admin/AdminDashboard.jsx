@@ -1,5 +1,5 @@
 // src/pages/admin/AdminDashboard.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -15,11 +15,13 @@ import {
   BarChart3,
   Activity,
   UserPlus,
-  Settings
+  Settings,
+  Loader2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import useDashboardStats from '@/hooks/useDashboardStats';
+import useApi from '@/hooks/useApi';
 
 /* ---------------------------
    Get dashboard data from backend
@@ -52,90 +54,7 @@ const getDashboardData = (stats) => {
   };
 };
 
-const departmentStats = [
-  { name: 'Public Works', complaints: 234, resolved: 198, pending: 36, efficiency: 85 },
-  { name: 'Water Department', complaints: 189, resolved: 167, pending: 22, efficiency: 88 },
-  { name: 'Electricity', complaints: 156, resolved: 142, pending: 14, efficiency: 91 },
-  { name: 'Sanitation', complaints: 134, resolved: 118, pending: 16, efficiency: 88 },
-  { name: 'Health Department', complaints: 98, resolved: 89, pending: 9, efficiency: 91 },
-  { name: 'Traffic', complaints: 87, resolved: 76, pending: 11, efficiency: 87 }
-];
-
-const recentComplaints = [
-  {
-    id: 'CMPT-001',
-    title: 'Pothole on Main Street',
-    category: 'Roads',
-    status: 'In Progress',
-    priority: 'High',
-    citizen: 'John Doe',
-    department: 'Public Works',
-    createdAt: '2024-01-20T10:00:00Z',
-    summary: 'Large pothole near the bus stop causing vehicle damage, needs urgent repair.',
-    assignedTo: 'Worker A',
-    eta: '2 days'
-  },
-  {
-    id: 'CMPT-002',
-    title: 'Water Leak in Park',
-    category: 'Water Supply',
-    status: 'Resolved',
-    priority: 'Medium',
-    citizen: 'Jane Smith',
-    department: 'Water Department',
-    createdAt: '2024-01-19T15:30:00Z',
-    summary: 'Pipe leak causing muddy area in the children play zone.',
-    assignedTo: 'Worker B',
-    eta: '—'
-  },
-  {
-    id: 'CMPT-003',
-    title: 'Broken Street Light',
-    category: 'Electricity',
-    status: 'Submitted',
-    priority: 'Low',
-    citizen: 'Mike Johnson',
-    department: 'Electricity',
-    createdAt: '2024-01-19T09:15:00Z',
-    summary: 'Street light not turning on during night at sector 5.',
-    assignedTo: null,
-    eta: '—'
-  },
-  {
-    id: 'CMPT-004',
-    title: 'Garbage Collection Issue',
-    category: 'Sanitation',
-    status: 'In Progress',
-    priority: 'Medium',
-    citizen: 'Sarah Wilson',
-    department: 'Sanitation',
-    createdAt: '2024-01-18T14:20:00Z',
-    summary: 'Garbage not collected for two days in block C.',
-    assignedTo: 'Worker C',
-    eta: '1 day'
-  }
-];
-
-const systemAlerts = [
-  {
-    id: 1,
-    type: 'warning',
-    message: 'High number of pending complaints in Public Works department',
-    timestamp: '2024-01-20T08:00:00Z'
-  },
-  {
-    id: 2,
-    type: 'info',
-    message: 'New user registration: 5 new citizens joined today',
-    timestamp: '2024-01-20T07:30:00Z'
-  },
-  {
-    id: 3,
-    type: 'success',
-    message: 'System backup completed successfully',
-    timestamp: '2024-01-20T06:00:00Z'
-  }
-];
+// Dummy data removed - now using real backend data
 
 /* ---------------------------
    Helper functions (top-level)
@@ -195,10 +114,59 @@ const AdminDashboard = () => {
   const { user } = useAuth();
   const { stats, loading, error, refetch } = useDashboardStats();
   const [selectedPeriod, setSelectedPeriod] = useState('thisMonth');
+  const { request } = useApi();
+
+  // Additional data states
+  const [departmentStats, setDepartmentStats] = useState([]);
+  const [recentComplaints, setRecentComplaints] = useState([]);
+  const [systemAlerts, setSystemAlerts] = useState([]);
+  const [dataLoading, setDataLoading] = useState(true);
+
+  // Handle period change
+  const handlePeriodChange = (period) => {
+    setSelectedPeriod(period);
+    refetch(period);
+  };
+
+  // Fetch additional dashboard data
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setDataLoading(true);
+
+        // Fetch all data in parallel
+        const [deptResponse, complaintsResponse, alertsResponse] = await Promise.all([
+          request('/api/admin/dashboard/department-stats'),
+          request('/api/admin/dashboard/recent-complaints?limit=5'),
+          request('/api/admin/dashboard/alerts')
+        ]);
+
+        if (deptResponse?.success) {
+          setDepartmentStats(deptResponse.data || []);
+        }
+
+        if (complaintsResponse?.success) {
+          setRecentComplaints(complaintsResponse.data || []);
+        }
+
+        if (alertsResponse?.success) {
+          setSystemAlerts(alertsResponse.data || []);
+        }
+      } catch (err) {
+        console.error('Error fetching dashboard data:', err);
+      } finally {
+        setDataLoading(false);
+      }
+    };
+
+    if (user?.role === 'admin') {
+      fetchDashboardData();
+    }
+  }, [user]);
 
   // derived data (pure)
   const dashboardData = getDashboardData(stats);
-  const currentData = dashboardData[selectedPeriod] || dashboardData.thisMonth;
+  const currentData = dashboardData;
 
   return (
     <div className="space-y-6 md:space-y-8 p-4 md:p-0">
@@ -212,7 +180,7 @@ const AdminDashboard = () => {
         </div>
 
         <div className="flex flex-col sm:flex-row gap-2 sm:gap-2">
-          <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+          <Select value={selectedPeriod} onValueChange={handlePeriodChange}>
             <SelectTrigger className="w-full sm:w-40">
               <SelectValue placeholder="Select period" />
             </SelectTrigger>
@@ -352,27 +320,38 @@ const AdminDashboard = () => {
             <CardTitle>Department Performance</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {departmentStats.map((dept, index) => (
-                <div key={index} className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium">{dept.name}</span>
-                    <div className="flex gap-2">
-                      <span className="text-sm text-gray-500">{dept.resolved}/{dept.complaints}</span>
-                      <span className={`text-sm font-medium ${getEfficiencyColor(dept.efficiency)}`}>
-                        {dept.efficiency}%
-                      </span>
+            {dataLoading ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+              </div>
+            ) : departmentStats.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <Building className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                <p>No department data available</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {departmentStats.map((dept, index) => (
+                  <div key={index} className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium">{dept.name}</span>
+                      <div className="flex gap-2">
+                        <span className="text-sm text-gray-500">{dept.resolved}/{dept.complaints}</span>
+                        <span className={`text-sm font-medium ${getEfficiencyColor(dept.efficiency)}`}>
+                          {dept.efficiency}%
+                        </span>
+                      </div>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="h-2 rounded-full bg-blue-500"
+                        style={{ width: `${dept.efficiency}%` }}
+                      />
                     </div>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="h-2 rounded-full bg-blue-500"
-                      style={{ width: `${dept.efficiency}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -382,19 +361,30 @@ const AdminDashboard = () => {
             <CardTitle>System Alerts</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {systemAlerts.map((alert) => (
-                <div key={alert.id} className="flex items-start gap-3 p-3 border rounded-lg">
-                  {getAlertIcon(alert.type)}
-                  <div className="flex-1">
-                    <p className="text-sm">{alert.message}</p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {formatDate(alert.timestamp)}
-                    </p>
+            {dataLoading ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+              </div>
+            ) : systemAlerts.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <CheckCircle className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                <p>No active alerts</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {systemAlerts.map((alert) => (
+                  <div key={alert._id} className="flex items-start gap-3 p-3 border rounded-lg">
+                    {getAlertIcon(alert.type)}
+                    <div className="flex-1">
+                      <p className="text-sm">{alert.message}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {formatDate(alert.createdAt)}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -410,35 +400,46 @@ const AdminDashboard = () => {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {recentComplaints.map((complaint) => (
-              <div key={complaint.id} className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="flex-1">
-                  <h4 className="font-medium">{complaint.title}</h4>
-                  <div className="flex items-center gap-4 mt-1">
-                    <span className="text-sm text-gray-500">ID: {complaint.id}</span>
-                    <span className="text-sm text-gray-500">Category: {complaint.category}</span>
-                    <span className="text-sm text-gray-500">Citizen: {complaint.citizen}</span>
-                    <span className="text-sm text-gray-500">Dept: {complaint.department}</span>
+          {dataLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+            </div>
+          ) : recentComplaints.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <FileText className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+              <p>No recent complaints</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {recentComplaints.map((complaint) => (
+                <div key={complaint.id} className="flex flex-col lg:flex-row lg:items-center lg:justify-between p-4 border rounded-lg gap-3">
+                  <div className="flex-1">
+                    <h4 className="font-medium">{complaint.title}</h4>
+                    <div className="flex flex-wrap items-center gap-2 lg:gap-4 mt-1">
+                      <span className="text-sm text-gray-500">ID: {String(complaint.id).slice(-8)}</span>
+                      <span className="text-sm text-gray-500">Category: {complaint.category}</span>
+                      <span className="text-sm text-gray-500">Citizen: {complaint.citizen}</span>
+                      <span className="text-sm text-gray-500">Dept: {complaint.department}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <Badge variant={getStatusVariant(complaint.status)}>
+                      {complaint.status}
+                    </Badge>
+
+                    <span className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded ${getPriorityColor(complaint.priority)} border`}>
+                      {complaint.priority}
+                    </span>
+
+                    <span className="text-xs text-gray-500">
+                      {formatDate(complaint.createdAt)}
+                    </span>
                   </div>
                 </div>
-
-                <div className="flex items-center gap-3">
-                  <Badge variant={getStatusVariant(complaint.status)}>
-                    {complaint.status}
-                  </Badge>
-
-                  <span className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded ${getPriorityColor(complaint.priority)} border`}>
-                    {complaint.priority}
-                  </span>
-
-                  <span className="text-xs text-gray-500">
-                    {formatDate(complaint.createdAt)}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 

@@ -9,18 +9,18 @@ const useDashboardStats = () => {
   const { request } = useApi();
   const { user } = useAuth();
 
-  const fetchStats = async () => {
+  const fetchStats = async (period = null) => {
     try {
       setLoading(true);
       setError(null);
-      
-      console.log('Fetching dashboard stats for user role:', user?.role);
-      
+
+      console.log('Fetching dashboard stats for user role:', user?.role, 'period:', period);
+
       // Use role-appropriate endpoint
       let endpoint;
       switch (user?.role) {
         case 'admin':
-          endpoint = '/api/admin/dashboard/stats';
+          endpoint = period ? `/api/admin/dashboard/stats?period=${period}` : '/api/admin/dashboard/stats';
           break;
         case 'staff':
         case 'worker':
@@ -29,7 +29,7 @@ const useDashboardStats = () => {
           endpoint = '/api/complaints/stats';
           break;
       }
-      
+
       const response = await request(endpoint);
       console.log('Dashboard stats response:', response);
 
@@ -70,8 +70,8 @@ const useDashboardStats = () => {
     }
   }, [user]);
 
-  const refetch = () => {
-    fetchStats();
+  const refetch = (period = null) => {
+    fetchStats(period);
   };
 
   return {

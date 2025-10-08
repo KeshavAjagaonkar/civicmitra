@@ -10,9 +10,7 @@ const useUserManagement = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await request('/api/admin/users', {
-        method: 'GET',
-      });
+      const response = await request('/api/admin/users', 'GET');
       if (response?.success) {
         setUsers(response.data || []);
       }
@@ -27,14 +25,8 @@ const useUserManagement = () => {
 
   const createUser = async (userData) => {
     try {
-      const response = await request('/api/admin/users', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(userData)
-      });
-      
+      const response = await request('/api/admin/users', 'POST', userData);
+
       if (response?.success) {
         setUsers(prev => [...prev, response.data]);
         return { success: true, data: response.data };
@@ -48,16 +40,10 @@ const useUserManagement = () => {
 
   const updateUserRole = async (userId, newRole) => {
     try {
-      const response = await request(`/api/admin/users/${userId}/role`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ role: newRole })
-      });
-      
+      const response = await request(`/api/admin/users/${userId}/role`, 'PUT', { role: newRole });
+
       if (response?.success) {
-        setUsers(prev => prev.map(user => 
+        setUsers(prev => prev.map(user =>
           user._id === userId ? { ...user, role: newRole } : user
         ));
         return { success: true, data: response.data };
@@ -71,10 +57,8 @@ const useUserManagement = () => {
 
   const deleteUser = async (userId) => {
     try {
-      const response = await request(`/api/admin/users/${userId}`, {
-        method: 'DELETE',
-      });
-      
+      const response = await request(`/api/admin/users/${userId}`, 'DELETE');
+
       if (response?.success) {
         setUsers(prev => prev.filter(user => user._id !== userId));
         return { success: true };

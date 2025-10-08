@@ -3,7 +3,7 @@ import useApi from './useApi';
 import { useAuth } from './useAuth';
 
 // Universal hook for fetching data with role-based endpoints
-export const useUniversalFetch = (endpoint, options = {}) => {
+export const useUniversalFetch = (endpoint, method = 'GET', body = null) => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -14,11 +14,11 @@ export const useUniversalFetch = (endpoint, options = {}) => {
     try {
       setLoading(true);
       setError(null);
-      
+
       console.log('Fetching data from:', endpoint);
-      const response = await request(endpoint, options);
+      const response = await request(endpoint, method, body);
       console.log('Response:', response);
-      
+
       if (response?.success) {
         setData(response.data);
       } else {
