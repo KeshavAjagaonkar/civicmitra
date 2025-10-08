@@ -108,7 +108,32 @@ const UserManagement = () => {
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2"><Label htmlFor="name">Full Name</Label><Input id="name" value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} /></div>
-              <div className="space-y-2"><Label htmlFor="email">Email</Label><Input id="email" type="email" value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} /></div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email Address</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder={newUser.role === 'worker' ? "worker@gmail.com" : "email@example.com"}
+                  value={newUser.email}
+                  onChange={e => setNewUser({...newUser, email: e.target.value})}
+                />
+                {newUser.role === 'worker' && (
+                  <p className="text-xs text-orange-600 dark:text-orange-400 mt-1 flex items-start gap-1">
+                    <span className="font-semibold">⚠️ Important:</span>
+                    <span>Workers MUST use a real email (Gmail, Yahoo, Outlook, etc.). Dummy emails are not allowed for workers.</span>
+                  </p>
+                )}
+                {newUser.role === 'staff' && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Staff can use dummy emails (e.g., staff@civicmitra.com) or real emails.
+                  </p>
+                )}
+                {newUser.email.endsWith('@civicmitra.com') && newUser.role === 'worker' && (
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-1 font-semibold">
+                    ❌ Error: Workers cannot use @civicmitra.com emails. Please use a real email address.
+                  </p>
+                )}
+              </div>
               <div className="space-y-2"><Label htmlFor="password">Password</Label><Input id="password" type="password" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} /></div>
               <div className="space-y-2"><Label htmlFor="role">Role</Label>
                 <Select value={newUser.role} onValueChange={role => setNewUser({...newUser, role})}>

@@ -14,9 +14,29 @@ exports.createUser = asyncHandler(async (req, res, next) => {
   if (!['staff', 'worker', 'admin', 'citizen'].includes(role)) {
     return next(new ErrorResponse('Invalid role specified', 400));
   }
-  
+
   if ((role === 'staff' || role === 'worker') && !department) {
     return next(new ErrorResponse('Please provide a department for staff or worker roles', 400));
+  }
+
+  // Email validation for WORKERS only (Citizens register themselves, Admin/Staff can use dummy)
+  if (role === 'worker') {
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return next(new ErrorResponse('Please provide a valid email address for worker', 400));
+    }
+
+    // Check if it's a real email domain (not @civicmitra.com)
+    if (email.endsWith('@civicmitra.com')) {
+      return next(new ErrorResponse('Workers must use a real email address (Gmail, Yahoo, Outlook, etc.). Dummy emails are not allowed for workers.', 400));
+    }
+
+    // Check if email already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return next(new ErrorResponse(`Email ${email} is already registered`, 400));
+    }
   }
 
   const user = await User.create({

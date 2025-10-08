@@ -5,21 +5,15 @@ import { FileText, CheckCircle, Clock, Plus, TrendingUp, AlertCircle, Loader2, A
 import { Link, useParams } from 'react-router-dom';
 import ComplaintTable from '@/components/ComplaintTable';
 import { FloatingActionButton } from '@/components/ui/FloatingActionButton';
-import { useNotifications } from '@/context/NotificationContext';
 import useDashboardStats from '@/hooks/useDashboardStats';
 import { useAuth } from '@/hooks/useAuth';
 
 
 const CitizenDashboard = () => {
-  const { addNotification } = useNotifications();
   const { slug } = useParams();
   const base = slug ? `/${slug}` : '';
   const { stats, loading, error, refetch } = useDashboardStats();
   const { user } = useAuth();
-
-  const handleAddNotification = () => {
-    addNotification(`A new complaint has been filed in your area at ${new Date().toLocaleTimeString()}`);
-  };
 
   // Create KPI data from stats
   const getKpiData = () => {
@@ -83,13 +77,6 @@ const CitizenDashboard = () => {
           )}
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          <Button 
-            variant="outline" 
-            onClick={handleAddNotification}
-            className="w-full sm:w-auto"
-          >
-            Add Test Notification
-          </Button>
           <Button asChild className="w-full sm:w-auto">
             <Link to={`${base}/complaints/create`}>File a New Complaint</Link>
           </Button>

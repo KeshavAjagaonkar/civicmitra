@@ -5,6 +5,8 @@ const ErrorResponse = require('../utils/errorResponse');
 const Chat = require('../models/Chat');
 const { getSocketIO } = require('../utils/socket');
 const { classifyComplaint } = require('../services/aiService');
+const { sendComplaintUpdateEmail, sendWorkerAssignmentEmail } = require('../utils/emailService');
+const User = require('../models/User');
 
 // A helper function to create and emit notifications
 const createAndEmitNotification = async (userId, title, message, complaintId) => {
@@ -160,6 +162,16 @@ exports.updateComplaintStatus = asyncHandler(async (req, res, next) => {
 
   await createAndEmitNotification(complaint.citizenId, 'Status Updated', `Your complaint "${complaint.title}" is now "${complaint.status}".`, complaint._id);
 
+  // Send email notification to citizen
+  const citizen = await User.findById(complaint.citizenId);
+  if (citizen) {
+    await sendComplaintUpdateEmail(
+      citizen,
+      complaint,
+      `Your complaint status has been updated to "${complaint.status}".`
+    );
+  }
+
   res.status(200).json({ success: true, data: complaint });
 });
 
@@ -188,6 +200,13 @@ exports.assignWorkerToComplaint = asyncHandler(async (req, res, next) => {
 
   await createAndEmitNotification(workerId, 'New Task Assigned', `You have been assigned: "${complaint.title}".${deadline ? ` Deadline: ${new Date(deadline).toLocaleDateString()}` : ''}`, complaint._id);
   await createAndEmitNotification(complaint.citizenId, 'Worker Assigned', `A worker is now assigned to your complaint: "${complaint.title}".`, complaint._id);
+
+  // Send email notifications
+  const citizen = await User.findById(complaint.citizenId);
+  const worker = await User.findById(workerId);
+  if (citizen && worker) {
+    await sendWorkerAssignmentEmail(citizen, complaint, worker);
+  }
 
   res.status(200).json({ success: true, data: complaint });
 });
@@ -291,6 +310,15 @@ exports.updateComplaintByWorker = asyncHandler(async (req, res, next) => {
   await complaint.save();
 
   await createAndEmitNotification(complaint.citizenId, 'Progress Update', `An update was posted for your complaint: "${complaint.title}".`, complaint._id);
+
+  // Send email notification to citizen about worker update
+  const citizen = await User.findById(complaint.citizenId);
+  if (citizen) {
+    const updateMessage = status === 'Resolved'
+      ? `Great news! Your complaint has been resolved by the assigned worker.`
+      : `Your complaint has been updated by the assigned worker.`;
+    await sendComplaintUpdateEmail(citizen, complaint, updateMessage);
+  }
 
   await complaint.populate('citizenId workerId timeline.updatedBy', 'name email role');
 

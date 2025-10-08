@@ -39,6 +39,15 @@ const registerSchema = z.object({
 }, {
   message: "Department is required for field workers.",
   path: ["department"],
+}).refine(data => {
+  // Block dummy emails for citizens and workers
+  if (data.email.endsWith('@civicmitra.com')) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Please use a real email address (Gmail, Yahoo, Outlook, etc.). Dummy emails are not allowed.",
+  path: ["email"],
 });
 
 const UnifiedLogin = () => {

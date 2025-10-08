@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const asyncHandler = require('../middleware/asyncHandler');
 const ErrorResponse = require('../utils/errorResponse');
+const { sendWelcomeEmail } = require('../utils/emailService');
 
 // Get token from model, set cookie, and send response
 const sendTokenResponse = (user, statusCode, res) => {
@@ -25,6 +26,26 @@ exports.register = asyncHandler(async (req, res, next) => {
   // Validate role - default to 'citizen' if not provided or invalid
   const allowedRoles = ['citizen', 'worker', 'staff'];
   const userRole = allowedRoles.includes(role) ? role : 'citizen';
+
+  // Email validation for Citizens (most common registration)
+  if (userRole === 'citizen') {
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return next(new ErrorResponse('Please provide a valid email address', 400));
+    }
+
+    // Block dummy emails for citizens (must use real email)
+    if (email.endsWith('@civicmitra.com')) {
+      return next(new ErrorResponse('Please use a real email address (Gmail, Yahoo, Outlook, etc.) to register. Dummy emails are not allowed.', 400));
+    }
+
+    // Check if email already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return next(new ErrorResponse('Email is already registered. Please login instead.', 400));
+    }
+  }
 
   // Create user data object
   const userData = {
@@ -66,6 +87,11 @@ exports.register = asyncHandler(async (req, res, next) => {
   }
 
   const user = await User.create(userData);
+
+  // Send welcome email for citizens
+  if (userRole === 'citizen') {
+    await sendWelcomeEmail(user);
+  }
 
   sendTokenResponse(user, 201, res);
 });
