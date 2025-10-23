@@ -1,0 +1,123 @@
+@startuml CivicMitra_Professional
+  !define CITIZEN #LightBlue
+  !define STAFF #LightGreen
+  !define WORKER #Orange
+  !define ADMIN #Pink
+  !define EXTERNAL #Yellow
+
+  left to right direction
+  skinparam packageStyle rectangle
+  skinparam actorBackgroundColor lightblue
+  skinparam usecaseBackgroundColor white
+  skinparam usecaseBorderColor #333333
+
+  title CivicMitra Use Case Diagram
+
+  actor "👤 Citizen" as C << User >>
+  actor "👔 Staff" as S << User >>
+  actor "🔧 Worker" as W << User >>
+  actor "👑 Admin" as A << User >>
+
+  actor "🤖 AI" as AI << External >>
+  actor "☁️ Cloud" as Cloud << External >>
+
+  rectangle "CivicMitra Complaint Management System" {
+      
+      rectangle "Authentication Module" #lightgray {
+          usecase "UC-01\nRegister" as UC1
+          usecase "UC-02\nLogin" as UC2
+          usecase "UC-03\nLogout" as UC3
+      }
+      
+      rectangle "Citizen Services" CITIZEN {
+          usecase "UC-04\nSubmit Complaint" as UC4
+          usecase "UC-05\nUpload Images" as UC5
+          usecase "UC-06\nTrack Status" as UC6
+          usecase "UC-07\nView Timeline" as UC7
+          usecase "UC-08\nProvide Feedback" as UC8
+          usecase "UC-09\nChat with Staff" as UC9
+      }
+      
+      rectangle "Staff Services" STAFF {
+          usecase "UC-10\nView Department\nComplaints" as UC10
+          usecase "UC-11\nAssign to Worker" as UC11
+          usecase "UC-12\nUpdate Status" as UC12
+          usecase "UC-13\nView Analytics" as UC13
+      }
+      
+      rectangle "Worker Services" WORKER {
+          usecase "UC-14\nView Assigned\nTasks" as UC14
+          usecase "UC-15\nUpdate Progress" as UC15
+          usecase "UC-16\nUpload Resolution\nProof" as UC16
+      }
+      
+      rectangle "Admin Services" ADMIN {
+          usecase "UC-17\nManage Users" as UC17
+          usecase "UC-18\nManage\nDepartments" as UC18
+          usecase "UC-19\nView All\nComplaints" as UC19
+          usecase "UC-20\nSystem Reports" as UC20
+      }
+      
+      rectangle "AI Services" EXTERNAL {
+          usecase "UC-21\nAI Classification" as UC21
+          usecase "UC-22\nAI Summarization" as UC22
+      }
+  }
+
+  ' Citizen connections
+  C --> UC1
+  C --> UC2
+  C --> UC3
+  C --> UC4
+  C --> UC6
+  C --> UC7
+  C --> UC8
+  C --> UC9
+
+  ' Staff connections
+  S --> UC2
+  S --> UC3
+  S --> UC10
+  S --> UC11
+  S --> UC12
+  S --> UC13
+  S --> UC9
+
+  ' Worker connections
+  W --> UC2
+  W --> UC3
+  W --> UC14
+  W --> UC15
+  W --> UC16
+
+  ' Admin connections
+  A --> UC2
+  A --> UC3
+  A --> UC17
+  A --> UC18
+  A --> UC19
+  A --> UC20
+
+  ' Include/Extend relationships
+  UC4 .> UC5 : <<include>>
+  UC4 .> UC21 : <<include>>
+  UC11 .> UC12 : <<include>>
+
+  ' External system connections
+  UC5 --> Cloud : <<uses>>
+  UC16 --> Cloud : <<uses>>
+  UC21 --> AI : <<uses>>
+  UC22 --> AI : <<uses>>
+
+  note right of UC4
+    Complaint submission 
+    automatically triggers 
+    AI classification
+  end note
+
+  note bottom of A
+    Admin has full 
+    system access
+  end note
+
+  @enduml

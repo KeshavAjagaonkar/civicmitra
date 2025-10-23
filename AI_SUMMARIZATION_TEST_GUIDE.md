@@ -102,6 +102,8 @@ Added AI summary in complaints list:
    - Go to: http://localhost:5173/admin
    - Login as admin
 
+
+
 2. **View Complaints List:**
    - Go to "Complaint Management"
    - Find the complaint you created
