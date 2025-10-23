@@ -1,2 +1,0 @@
-in citizen the feeback page for citizen not working properly , it should give feedback open after the complaint get resolved citizen should rate the complaint resolvement , and the rating should be visible to everyone , from worker to staff to admin , to make the system better . fix this , other exiting things are great and dont changes anything in it .
-and one more change is the profile icon not set correctly it background color is blue , i want icon like the other icon of notification and dark mode light mode icone , search for such icon type for profile and add their. 
