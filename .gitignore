@@ -37,3 +37,13 @@ yarn-error.log*
 ## Temporary files
 *.tmp
 *.temp".claude/" 
+
+
+####
+CREDENTIALS.md
+SYSTEM_ANALYSIS.md
+frontend/HOW_TO_VIEW_ALL_PAGES.md
+frontend/IMPLEMENTATION_STATUS.md
+frontend/README.md
+frontend/ROUTES.md
+frontend/ROUTING_FIX_SUMMARY.md

@@ -54,7 +54,7 @@ const UserSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Please add a password'],
     minlength: 6,
-    select: false,
+    select: false,//this means when do find anywhere for this model we will get response without the password , password is gets excluded.
   },
   role: {
     type: String,
@@ -120,6 +120,7 @@ UserSchema.pre('save', async function (next) {
 });
 
 // Method to sign a JWT for the user
+//.methods() is used to define instance method on schema
 UserSchema.methods.getSignedJwtToken = function () {
   return jwt.sign({ id: this._id, role: this.role }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRE,
