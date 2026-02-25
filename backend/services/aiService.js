@@ -11,7 +11,7 @@ exports.classifyComplaint = async (title, description, category) => {
   try {
     // If no API key is provided, fallback to basic classification
     if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'your_gemini_api_key_here') {
-      console.warn('Gemini API key not configured, using fallback classification');
+
       return getFallbackClassification(category);
     }
 
@@ -47,7 +47,7 @@ Respond only with valid JSON:`;
 
     try {
       const parsedResponse = JSON.parse(text);
-      
+
       // Validate the response
       if (parsedResponse.category && parsedResponse.priority) {
         return {
@@ -62,12 +62,12 @@ Respond only with valid JSON:`;
         throw new Error('Invalid AI response format');
       }
     } catch (parseError) {
-      console.error('Failed to parse AI response:', parseError);
+
       return getFallbackClassification(category);
     }
 
   } catch (error) {
-    console.error('AI Classification Error:', error.message);
+
     // Fallback to rule-based classification
     return getFallbackClassification(category);
   }
@@ -90,7 +90,7 @@ const getFallbackClassification = (category) => {
   };
 
   const mapping = categoryMapping[category] || { priority: 'Medium', department: null };
-  
+
   return {
     category: category,
     department: mapping.department,
@@ -128,7 +128,7 @@ exports.getDepartmentByCategory = async (category) => {
     const department = await Department.findOne({ name: departmentName });
     return department ? department._id : null;
   } catch (error) {
-    console.error('Error mapping category to department:', error.message);
+
     return null;
   }
 };
@@ -145,7 +145,7 @@ exports.summarizeComplaint = async (title, description, location, category) => {
   try {
     // If no API key, return null (complaint will still work)
     if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'your_gemini_api_key_here') {
-      console.warn('Gemini API key not configured, skipping AI summarization');
+
       return null;
     }
 
@@ -209,7 +209,7 @@ Respond only with valid JSON.`;
         generatedAt: new Date(),
       };
     } catch (parseError) {
-      console.error('Failed to parse AI summary response:', parseError);
+
       // Return basic fallback summary
       return {
         shortSummary: `${category} issue reported at ${location}`,
@@ -230,7 +230,7 @@ Respond only with valid JSON.`;
     }
 
   } catch (error) {
-    console.error('AI Summarization Error:', error.message);
+
     // Return null - complaint will still work without summary
     return null;
   }

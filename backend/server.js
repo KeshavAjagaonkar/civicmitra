@@ -26,9 +26,7 @@ const allowedOrigins = [
   process.env.FRONTEND_URL,
 ].filter(Boolean); // This ensures that if FRONTEND_URL is not set, it's simply ignored.
 
-if (process.env.NODE_ENV === 'development') {
-  console.log('Allowed CORS Origins:', allowedOrigins);
-}
+
 
 const corsOptions = {
   origin: function (origin, callback) {
@@ -51,29 +49,22 @@ const io = new Server(server, {
 setSocketIO(io);
 
 io.on('connection', (socket) => {
-  console.log(`Socket.IO User Connected: ${socket.id}`);
-
   // Handle joining user-specific notification room
   socket.on('join_notifications', (userId) => {
     socket.join(userId.toString());
-    console.log(`Socket ${socket.id} joined notification room for user: ${userId}`);
   });
 
   // Handle joining complaint-specific rooms
   socket.on('join_room', (roomId) => {
     socket.join(roomId);
-    console.log(`Socket ${socket.id} joined room: ${roomId}`);
   });
 
   // Handle leaving rooms
   socket.on('leave_room', (roomId) => {
     socket.leave(roomId);
-    console.log(`Socket ${socket.id} left room: ${roomId}`);
   });
 
-  socket.on('disconnect', () => {
-    console.log(`Socket.IO User Disconnected: ${socket.id}`);
-  });
+  socket.on('disconnect', () => { });
 });
 
 // Middleware

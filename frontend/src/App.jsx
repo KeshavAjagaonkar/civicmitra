@@ -7,12 +7,12 @@ import AuthLayout from './components/layout/AuthLayout';
 import Layout from './components/layout/Layout';
 
 // Protected Route Components
-import ProtectedRoute, { 
-  AdminRoute, 
-  StaffRoute, 
-  WorkerRoute, 
-  CitizenRoute, 
-  PublicRoute 
+import ProtectedRoute, {
+  AdminRoute,
+  StaffRoute,
+  WorkerRoute,
+  CitizenRoute,
+  PublicRoute
 } from './components/ProtectedRoute';
 
 // --- CORE PAGES ---
@@ -56,11 +56,7 @@ import AssignedTasks from './pages/worker/AssignedTasks';
 import TaskDetails from './pages/worker/TaskDetails';
 import WorkerReports from './pages/worker/WorkerReports';
 
-// --- DEV & DEBUG PAGES ---
-import Debug from './pages/Debug';
-import TestLogin from './pages/TestLogin';
-import ShowcaseAll from './pages/ShowcaseAll';
-import DevNav from './pages/DevNav';
+
 
 // Toaster & Theme
 import { Toaster } from "@/components/ui/Toaster";
@@ -75,7 +71,7 @@ function App() {
           <Route path="/" element={<PublicRoute><LandingPageLayout /></PublicRoute>}>
             <Route index element={<LandingPage />} />
           </Route>
-          
+
           {/* Authentication Routes */}
           <Route element={<PublicRoute><AuthLayout /></PublicRoute>}>
             <Route path="/auth" element={<UnifiedLogin />} />
@@ -118,7 +114,7 @@ function App() {
             <Route path="/admin/analytics" element={<AdminRoute><SystemAnalytics /></AdminRoute>} />
             <Route path="/admin/profile" element={<AdminRoute><ProfilePage /></AdminRoute>} />
             <Route path="/admin/settings" element={<AdminRoute><ProfilePage /></AdminRoute>} />
-            
+
             {/* ==== STAFF ROUTES (Department-based) ==== */}
             <Route path="/:departmentSlug/staff" element={<StaffRoute><StaffDashboard /></StaffRoute>} />
             <Route path="/:departmentSlug/staff/complaints" element={<StaffRoute><StaffComplaintManagement /></StaffRoute>} />
@@ -140,7 +136,7 @@ function App() {
             <Route path="/staff/workers" element={<StaffRoute><WorkerManagement /></StaffRoute>} />
             <Route path="/staff/profile" element={<StaffRoute><ProfilePage /></StaffRoute>} />
             <Route path="/staff/settings" element={<StaffRoute><ProfilePage /></StaffRoute>} />
-            
+
             {/* ==== WORKER ROUTES ==== */}
             <Route path="/worker" element={<WorkerRoute><WorkerDashboard /></WorkerRoute>} />
             <Route path="/worker/tasks" element={<WorkerRoute><AssignedTasks /></WorkerRoute>} />
@@ -148,16 +144,11 @@ function App() {
             <Route path="/worker/reports" element={<WorkerRoute><WorkerReports /></WorkerRoute>} />
             <Route path="/worker/profile" element={<WorkerRoute><ProfilePage /></WorkerRoute>} />
             <Route path="/worker/settings" element={<WorkerRoute><ProfilePage /></WorkerRoute>} />
-            
+
           </Route>
 
-          {/* Debug Routes for development */}
-          <Route path="/debug" element={<Debug />} />
-          <Route path="/test-login" element={<TestLogin />} />
-          <Route path="/showcase" element={<ShowcaseAll />} />
-          <Route path="/dev" element={<DevNav />} />
 
-          {/* Catch-all for 404 */} 
+          {/* Catch-all for 404 */}
           <Route path="*" element={<NotFound />} />
         </Routes>
         <Toaster />

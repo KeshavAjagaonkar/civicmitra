@@ -19,7 +19,7 @@ exports.getChat = asyncHandler(async (req, res, next) => {
     // Ensure user is authorized to view this chat (citizen, assigned staff, worker, or admin)
     const isCitizen = req.user.id === complaint.citizenId.toString();
     const isStaff = req.user.role === 'staff' && complaint.department && req.user.department &&
-                    complaint.department.toString() === req.user.department._id.toString();
+        complaint.department.toString() === req.user.department._id.toString();
     const isWorker = req.user.id === complaint.workerId?.toString();
     const isAdmin = req.user.role === 'admin';
 
@@ -31,7 +31,7 @@ exports.getChat = asyncHandler(async (req, res, next) => {
     let chat = await Chat.findOne({ complaintId }).populate('messages.sender', 'name role');
 
     if (!chat) {
-        console.log(`No chat found for complaint ${complaintId}, creating a new one.`);
+
         chat = await Chat.create({
             complaintId: complaintId,
             citizenId: complaint.citizenId,
@@ -60,7 +60,7 @@ exports.sendMessage = asyncHandler(async (req, res, next) => {
     if (!complaint) {
         return next(new ErrorResponse('Complaint not found', 404));
     }
-    
+
     const chat = await Chat.findOne({ complaintId });
     if (!chat) {
         return next(new ErrorResponse('Chat not found', 404));
@@ -69,14 +69,14 @@ exports.sendMessage = asyncHandler(async (req, res, next) => {
     // Ensure user is authorized to send a message
     const isCitizen = req.user.id === complaint.citizenId.toString();
     const isStaff = req.user.role === 'staff' && complaint.department && req.user.department &&
-                    complaint.department.toString() === req.user.department._id.toString();
+        complaint.department.toString() === req.user.department._id.toString();
     const isWorker = req.user.id === complaint.workerId?.toString();
     const isAdmin = req.user.role === 'admin';
 
     if (!isCitizen && !isStaff && !isWorker && !isAdmin) {
         return next(new ErrorResponse('Not authorized to send messages in this chat', 403));
     }
-    
+
     // Create the new message
     const newMessage = {
         sender: req.user.id,
@@ -97,7 +97,7 @@ exports.sendMessage = asyncHandler(async (req, res, next) => {
             timestamp: newMessage.timestamp || new Date()
         };
         io.to(complaintId).emit('receive_message', populatedMessage);
-        console.log(`Emitted 'receive_message' to room: ${complaintId}`);
+
     }
 
     // Populate the entire chat to get sender details, then extract the last message
