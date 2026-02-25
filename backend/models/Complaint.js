@@ -77,8 +77,11 @@ const ComplaintSchema = new mongoose.Schema({
     default: 'Medium',
   },
   location: {
-    type: String,
-    required: [true, 'Please add a location'],
+    type: { type: String, enum: ['Point'], default: 'Point' },
+    coordinates: { type: [Number], index: '2dsphere' },  // [longitude, latitude]
+    address: { type: String, required: true },
+    ward: String,
+    pincode: String
   },
   attachments: [
     {
