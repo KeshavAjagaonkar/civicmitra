@@ -8,6 +8,7 @@ const { classifyComplaint, summarizeComplaint, getDepartmentByCategory } = requi
 const { sendComplaintUpdateEmail, sendWorkerAssignmentEmail } = require('../utils/emailService');
 const User = require('../models/User');
 const { calculateCommunityPriority } = require('../utils/communityPriority');
+const { findSimilarWithAI, findSimilarWithKeywords } = require('../utils/duplicateDetection');
 
 // A helper function to create and emit notifications
 const createAndEmitNotification = async (userId, title, message, complaintId) => {
@@ -657,6 +658,63 @@ exports.getNearbyComplaints = asyncHandler(async (req, res, next) => {
     success: true,
     count: enrichedComplaints.length,
     data: enrichedComplaints,
+  });
+});
+
+// @desc    Check for similar active complaints (Duplicate Detection)
+// @route   POST /api/complaints/check-similar
+// @access  Private (Citizen)
+exports.checkSimilarComplaints = asyncHandler(async (req, res, next) => {
+  const { title, description, category, lng, lat } = req.body;
+
+  if (!title || !description) {
+    return res.status(400).json({ success: false, message: 'Title and description required' });
+  }
+
+  // 1. Find candidates (Active complaints in the same category)
+  // If coordinates are provided, we could narrow this down geographically, 
+  // but for now let's just grab recent active ones in the category to pass to the AI.
+  const filter = {
+    status: { $nin: ['Resolved', 'Closed'] },
+    isPublic: true
+  };
+  
+  if (category && category !== 'Other') {
+    filter.category = category;
+  }
+
+  // Optional: If we have location, only check within 5km
+  if (lng && lat) {
+    filter['location.coordinates'] = {
+      $nearSphere: {
+        $geometry: { type: 'Point', coordinates: [parseFloat(lng), parseFloat(lat)] },
+        $maxDistance: 5000 
+      }
+    };
+  }
+
+  const candidates = await Complaint.find(filter)
+    .select('title description category location status upvotes.count createdAt')
+    .sort({ 'communityPriority.score': -1 })
+    .limit(10) // Only send top 10 to Gemini to save tokens/time
+    .lean();
+
+  if (candidates.length === 0) {
+    return res.status(200).json({ success: true, matches: [] });
+  }
+
+  let matches = [];
+  try {
+    // 2. Try Gemini first
+    matches = await findSimilarWithAI(title, description, candidates);
+  } catch (error) {
+    // 3. Fallback to keywords if Gemini fails or times out
+    matches = await findSimilarWithKeywords(title, description, candidates);
+  }
+
+  res.status(200).json({
+    success: true,
+    matches: matches
   });
 });
 
