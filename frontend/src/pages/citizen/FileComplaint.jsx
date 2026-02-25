@@ -13,6 +13,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { useDropzone } from 'react-dropzone';
 import useApi from '@/hooks/useApi';
 import { useAuth } from '@/hooks/useAuth';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/Dialog';
 
 // Schema matching backend requirements
 const complaintSchema = z.object({
@@ -44,6 +45,10 @@ const FileComplaint = () => {
   const { toast } = useToast();
   const [files, setFiles] = useState([]);
   const [departments, setDepartments] = useState([]);
+  const [isDuplicateModalOpen, setIsDuplicateModalOpen] = useState(false);
+  const [duplicateMatches, setDuplicateMatches] = useState([]);
+  const [pendingFormData, setPendingFormData] = useState(null);
+  const [isCheckingDuplicates, setIsCheckingDuplicates] = useState(false);
 
   useEffect(() => {
     const fetchDepartments = async () => {
@@ -87,6 +92,35 @@ const FileComplaint = () => {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
 
   const onSubmit = async (data) => {
+    // Check for duplicates first
+    setIsCheckingDuplicates(true);
+    try {
+      const checkRes = await request('/api/complaints/check-similar', 'POST', {
+        title: data.title,
+        description: data.description,
+        category: data.category,
+        lng: data.lng,
+        lat: data.lat
+      });
+
+      if (checkRes.success && checkRes.matches && checkRes.matches.length > 0) {
+        setDuplicateMatches(checkRes.matches);
+        setPendingFormData(data); // Save the form data to submit if they override
+        setIsDuplicateModalOpen(true);
+        setIsCheckingDuplicates(false);
+        return; // Stop the submission flow here
+      }
+    } catch (err) {
+      console.warn("Duplicate check failed, proceeding with submission", err);
+      // If the duplicate check fails for some reason (e.g. Gemini quota), we still want them to be able to submit.
+    }
+    setIsCheckingDuplicates(false);
+
+    // Proceed with submission if no duplicates or check failed
+    await finalSubmit(data);
+  };
+
+  const finalSubmit = async (data) => {
     const formData = new FormData();
     for (const key in data) {
       if (key !== 'attachments') {
@@ -100,10 +134,6 @@ const FileComplaint = () => {
       formData.append('attachments', file);
     });
 
-    // Debug log
-    console.log('Submitting complaint with data:', Object.fromEntries(formData.entries()));
-    console.log('Files:', files);
-
     try {
       const result = await request('/api/complaints', 'POST', formData);
 
@@ -112,7 +142,6 @@ const FileComplaint = () => {
           title: 'Complaint submitted!',
           description: 'Your complaint has been successfully submitted.',
         });
-        // Navigate to slug-based URL if user has a slug, otherwise fallback
         const complaintsPath = user?.slug ? `/${user.slug}/complaints` : '/complaints';
         navigate(complaintsPath);
       }
@@ -338,10 +367,9 @@ const FileComplaint = () => {
               className="w-full" 
               variant="success"
               size="lg"
-              loading={isLoading}
-              loadingText="Submitting your complaint..."
+              disabled={isLoading || isCheckingDuplicates}
             >
-              Submit Complaint
+              {isCheckingDuplicates ? 'Checking for similar issues...' : isLoading ? 'Submitting...' : 'Submit Complaint'}
             </Button>
             
             <div className="text-center text-sm text-gray-500 dark:text-gray-400">
@@ -350,6 +378,68 @@ const FileComplaint = () => {
           </form>
         </CardContent>
       </Card>
+
+      {/* Duplicate Detection Modal */}
+      <Dialog open={isDuplicateModalOpen} onOpenChange={setIsDuplicateModalOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl text-orange-600 flex items-center gap-2">
+              ⚠️ Wait! Similar Issues Found
+            </DialogTitle>
+            <DialogDescription>
+              We found existing complaints that look very similar to yours. Support them to give the issue more visibility!
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 max-h-96 overflow-y-auto pr-2 mt-4">
+            {duplicateMatches.map((match, idx) => (
+              <div key={idx} className="p-4 border rounded-lg bg-orange-50/50 dark:bg-orange-950/20">
+                <div className="flex justify-between items-start mb-2">
+                  <h4 className="font-semibold text-lg">{match.complaint.title}</h4>
+                  <div className="text-sm font-medium text-orange-600 bg-orange-100 px-2 py-1 rounded">
+                    {match.similarity}% Match
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2 mb-3">
+                  {match.complaint.description}
+                </p>
+                <div className="flex gap-4 text-xs text-gray-500 mb-3">
+                  <span>📍 {typeof match.complaint.location === 'object' ? match.complaint.location.address : match.complaint.location}</span>
+                  <span>👍 {match.complaint.upvotes?.count || 0} supporters</span>
+                </div>
+                <Button 
+                  variant="outline" 
+                  className="w-full border-orange-200 hover:bg-orange-100 hover:text-orange-700"
+                  onClick={() => {
+                    setIsDuplicateModalOpen(false);
+                    navigate(user?.slug ? `/${user.slug}/complaints/${match.complaint._id}` : `/complaints/${match.complaint._id}`);
+                  }}
+                >
+                  View & Support This Instead
+                </Button>
+              </div>
+            ))}
+          </div>
+
+          <DialogFooter className="mt-6 flex flex-col sm:flex-row gap-3 sm:justify-between">
+            <Button 
+              variant="ghost" 
+              onClick={() => setIsDuplicateModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="default" 
+              onClick={() => {
+                setIsDuplicateModalOpen(false);
+                finalSubmit(pendingFormData);
+              }}
+            >
+              No, mine is different. File anyway.
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
