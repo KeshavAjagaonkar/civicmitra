@@ -21,11 +21,11 @@ const sendTokenResponse = (user, statusCode, res) => {
 // @route   POST /api/auth/register
 // @access  Public
 exports.register = asyncHandler(async (req, res, next) => {
-  const { name, email, phone, address, password, role, department, workerId, specialization, experienceYears, shiftPreference, vehicleNumber, licenseNumber } = req.body;
+  const { name, email, phone, address, password } = req.body;
 
-  // Validate role - default to 'citizen' if not provided or invalid
-  const allowedRoles = ['citizen', 'worker', 'staff'];
-  const userRole = allowedRoles.includes(role) ? role : 'citizen';
+  // SECURITY: Public registration ALWAYS creates citizen accounts.
+  // Staff and worker accounts can only be created through the admin-only POST /api/admin/users endpoint.
+  const userRole = 'citizen';
 
   // Email validation for Citizens (most common registration)
   if (userRole === 'citizen') {
@@ -57,41 +57,10 @@ exports.register = asyncHandler(async (req, res, next) => {
     role: userRole,
   };
 
-  // Handle department - convert name to ID if needed
-  if (department && (userRole === 'worker' || userRole === 'staff')) {
-    const Department = require('../models/Department');
-
-    // Check if department is an ObjectId or a name
-    if (department.match(/^[0-9a-fA-F]{24}$/)) {
-      // It's already an ObjectId
-      userData.department = department;
-    } else {
-      // It's a name, find the department by name
-      const dept = await Department.findOne({ name: department });
-      if (dept) {
-        userData.department = dept._id;
-      } else {
-        return next(new ErrorResponse(`Department '${department}' not found`, 400));
-      }
-    }
-  }
-
-  // Add worker-specific fields
-  if (userRole === 'worker') {
-    if (workerId) userData.workerId = workerId;
-    if (specialization) userData.specialization = specialization;
-    if (experienceYears) userData.experienceYears = experienceYears;
-    if (shiftPreference) userData.shiftPreference = shiftPreference;
-    if (vehicleNumber) userData.vehicleNumber = vehicleNumber;
-    if (licenseNumber) userData.licenseNumber = licenseNumber;
-  }
-
   const user = await User.create(userData);
 
   // Send welcome email for citizens
-  if (userRole === 'citizen') {
-    await sendWelcomeEmail(user);
-  }
+  await sendWelcomeEmail(user);
 
   sendTokenResponse(user, 201, res);
 });
@@ -132,7 +101,17 @@ exports.getMe = asyncHandler(async (req, res, next) => {
 // @route   PUT /api/auth/profile
 // @access  Private
 exports.updateProfile = asyncHandler(async (req, res, next) => {
-  const user = await User.findByIdAndUpdate(req.user.id, req.body, {
+  // SECURITY: Only allow updating safe fields — prevents privilege escalation
+  // via mass assignment (e.g., sending { "role": "admin" } in the body)
+  const allowedFields = ['name', 'email', 'phone', 'address'];
+  const updates = {};
+  for (const key of allowedFields) {
+    if (req.body[key] !== undefined) {
+      updates[key] = req.body[key];
+    }
+  }
+
+  const user = await User.findByIdAndUpdate(req.user.id, updates, {
     new: true,
     runValidators: true,
   });
