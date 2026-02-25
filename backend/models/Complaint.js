@@ -197,4 +197,24 @@ const ComplaintSchema = new mongoose.Schema({
   timestamps: true, // Automatically manage createdAt and updatedAt
 });
 
+// --- Performance Indexes ---
+
+// Department dashboard queries
+ComplaintSchema.index({ department: 1, status: 1 });
+
+// "My Complaints" page sorted by newest
+ComplaintSchema.index({ citizenId: 1, createdAt: -1 });
+
+// Public feed default sort
+ComplaintSchema.index({ 'communityPriority.score': -1 });
+
+// Public feed with filters
+ComplaintSchema.index({ isPublic: 1, category: 1, status: 1 });
+
+// Idempotency check on upvote (preventing duplicate votes from same user)
+ComplaintSchema.index({ 'upvotes.supporters.userId': 1 });
+
+// Geospatial queries - location is already indexed inline in the schema as '2dsphere'
+// ComplaintSchema.index({ 'location.coordinates': '2dsphere' }); // Redundant but noted for clarity
+
 module.exports = mongoose.model('Complaint', ComplaintSchema);
