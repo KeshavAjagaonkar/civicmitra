@@ -52,9 +52,9 @@ const ComplaintSchema = new mongoose.Schema({
     // required: [true, 'Please select a category'],
     enum: [
       'Roads',
-      'Water Supply',   
+      'Water Supply',
       'Sanitation',
-      'Electricity', 
+      'Electricity',
       'Public Health',
       'Street Lights',
       'Drainage',
@@ -165,6 +165,23 @@ const ComplaintSchema = new mongoose.Schema({
       },
     },
   ],
+  // --- Community Fields ---
+  isPublic: {
+    type: Boolean,
+    default: true,
+  },
+  upvotes: {
+    // Denormalized count for efficient indexing/sorting (MongoDB can't index array.length)
+    count: { type: Number, default: 0 },
+    supporters: [{
+      userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      supportedAt: { type: Date, default: Date.now },
+    }],
+  },
+  communityPriority: {
+    score: { type: Number, default: 0 },
+    lastCalculated: { type: Date, default: Date.now },
+  },
   createdAt: {
     type: Date,
     default: Date.now,
