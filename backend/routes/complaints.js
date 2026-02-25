@@ -14,6 +14,9 @@ const {
   getUserStats,
   updateAssignment,
   getWorkerReports,
+  getPublicComplaints,
+  upvoteComplaint,
+  removeUpvote,
 } = require('../controllers/complaintController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 const upload = require('../middleware/uploadMiddleware');
@@ -22,12 +25,21 @@ const { validate, createComplaintSchema, updateComplaintStatusSchema } = require
 router.route('/')
   .post(protect, upload.array('attachments'), validate(createComplaintSchema), createComplaint);
 
+// Community routes — MUST be before /:id to avoid Express matching "public" as an ID
+router.route('/public').get(protect, getPublicComplaints);
+
 // Explicit list endpoint to avoid any ambiguity
 router.route('/all').get(protect, authorize('staff', 'admin', 'worker'), listComplaints);
 router.route('/recent').get(protect, authorize('staff', 'admin', 'worker'), getRecentComplaints);
 router.route('/stats').get(protect, getUserStats);
 router.route('/worker-reports').get(protect, authorize('worker'), getWorkerReports);
 router.route('/my').get(protect, getMyComplaints);
+
+// Upvote routes
+router.route('/:id/upvote')
+  .post(protect, authorize('citizen'), upvoteComplaint)
+  .delete(protect, authorize('citizen'), removeUpvote);
+
 router.route('/:id').get(protect, getComplaintById);
 router.route('/:id/status').patch(protect, authorize('staff', 'admin'), validate(updateComplaintStatusSchema), updateComplaintStatus);
 router.route('/:id/assign').patch(protect, authorize('admin'), assignComplaint);

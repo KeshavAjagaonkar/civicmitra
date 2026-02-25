@@ -7,6 +7,7 @@ const { getSocketIO } = require('../utils/socket');
 const { classifyComplaint, summarizeComplaint, getDepartmentByCategory } = require('../services/aiService');
 const { sendComplaintUpdateEmail, sendWorkerAssignmentEmail } = require('../utils/emailService');
 const User = require('../models/User');
+const { calculateCommunityPriority } = require('../utils/communityPriority');
 
 // A helper function to create and emit notifications
 const createAndEmitNotification = async (userId, title, message, complaintId) => {
@@ -19,6 +20,21 @@ const createAndEmitNotification = async (userId, title, message, complaintId) =>
     }
   } catch (error) {
     // Notification creation failed silently — non-critical
+  }
+};
+
+// Broadcast a notification to the original filer AND all supporters of a complaint
+const broadcastToSupporters = async (complaint, title, message) => {
+  // Notify original filer
+  await createAndEmitNotification(complaint.citizenId, title, message, complaint._id);
+
+  // Notify all supporters (skip if same as the filer)
+  if (complaint.upvotes && complaint.upvotes.supporters) {
+    for (const supporter of complaint.upvotes.supporters) {
+      if (supporter.userId.toString() !== complaint.citizenId.toString()) {
+        await createAndEmitNotification(supporter.userId, title, message, complaint._id);
+      }
+    }
   }
 };
 
@@ -178,7 +194,7 @@ exports.updateComplaintStatus = asyncHandler(async (req, res, next) => {
   complaint.status = req.body.status;
   await complaint.save();
 
-  await createAndEmitNotification(complaint.citizenId, 'Status Updated', `Your complaint "${complaint.title}" is now "${complaint.status}".`, complaint._id);
+  await broadcastToSupporters(complaint, 'Status Updated', `Complaint "${complaint.title}" is now "${complaint.status}".`);
 
   // Send email notification to citizen
   const citizen = await User.findById(complaint.citizenId);
@@ -217,7 +233,7 @@ exports.assignWorkerToComplaint = asyncHandler(async (req, res, next) => {
   await complaint.save();
 
   await createAndEmitNotification(workerId, 'New Task Assigned', `You have been assigned: "${complaint.title}".${deadline ? ` Deadline: ${new Date(deadline).toLocaleDateString()}` : ''}`, complaint._id);
-  await createAndEmitNotification(complaint.citizenId, 'Worker Assigned', `A worker is now assigned to your complaint: "${complaint.title}".`, complaint._id);
+  await broadcastToSupporters(complaint, 'Worker Assigned', `A worker is now assigned to complaint: "${complaint.title}".`);
 
   // Send email notifications
   const citizen = await User.findById(complaint.citizenId);
@@ -277,8 +293,7 @@ exports.updateAssignment = asyncHandler(async (req, res, next) => {
     });
     await complaint.save();
 
-    // Notify citizen
-    await createAndEmitNotification(complaint.citizenId, 'Complaint Updated', `Your complaint "${complaint.title}" has been updated.`, complaint._id);
+    await broadcastToSupporters(complaint, 'Complaint Updated', `Complaint "${complaint.title}" has been updated.`);
   }
 
   res.status(200).json({ success: true, data: complaint });
@@ -327,7 +342,7 @@ exports.updateComplaintByWorker = asyncHandler(async (req, res, next) => {
 
   await complaint.save();
 
-  await createAndEmitNotification(complaint.citizenId, 'Progress Update', `An update was posted for your complaint: "${complaint.title}".`, complaint._id);
+  await broadcastToSupporters(complaint, 'Progress Update', `An update was posted for complaint: "${complaint.title}".`);
 
   // Send email notification to citizen about worker update
   const citizen = await User.findById(complaint.citizenId);
@@ -576,6 +591,139 @@ exports.getWorkerReports = asyncHandler(async (req, res, next) => {
       monthlyTrend,
       recentTasks
     }
+  });
+});
+
+// ============================================================
+// COMMUNITY FEATURES — Public Feed, Upvotes
+// ============================================================
+
+// @desc    Get public complaints feed (sorted by community priority)
+// @route   GET /api/complaints/public
+// @access  Private (any authenticated user)
+exports.getPublicComplaints = asyncHandler(async (req, res, next) => {
+  const page = parseInt(req.query.page, 10) || 1;
+  const limit = parseInt(req.query.limit, 10) || 10;
+  const skip = (page - 1) * limit;
+
+  // Build filter
+  const filter = { isPublic: true };
+  if (req.query.category) filter.category = req.query.category;
+  if (req.query.status) filter.status = req.query.status;
+
+  // Build sort
+  let sort = { 'communityPriority.score': -1 }; // Default: highest priority first
+  if (req.query.sort === 'newest') sort = { createdAt: -1 };
+  if (req.query.sort === 'oldest') sort = { createdAt: 1 };
+  if (req.query.sort === 'most-upvoted') sort = { 'upvotes.count': -1 };
+
+  const [complaints, total] = await Promise.all([
+    Complaint.find(filter)
+      .select('-upvotes.supporters') // Privacy: don't expose who supported what
+      .populate('citizenId', 'name')
+      .populate('department', 'name')
+      .sort(sort)
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+    Complaint.countDocuments(filter),
+  ]);
+
+  // For the current user, check which complaints they have supported
+  const userId = req.user.id;
+  const userSupportedIds = await Complaint.find({
+    _id: { $in: complaints.map(c => c._id) },
+    'upvotes.supporters.userId': userId,
+  }).select('_id').lean();
+
+  const supportedSet = new Set(userSupportedIds.map(c => c._id.toString()));
+
+  const enrichedComplaints = complaints.map(c => ({
+    ...c,
+    hasUserSupported: supportedSet.has(c._id.toString()),
+  }));
+
+  res.status(200).json({
+    success: true,
+    data: enrichedComplaints,
+    pagination: {
+      total,
+      pages: Math.ceil(total / limit),
+      page,
+      limit,
+    },
+  });
+});
+
+// @desc    Upvote (support) a public complaint
+// @route   POST /api/complaints/:id/upvote
+// @access  Private (Citizen)
+exports.upvoteComplaint = asyncHandler(async (req, res, next) => {
+  const complaint = await Complaint.findById(req.params.id);
+  if (!complaint) {
+    return next(new ErrorResponse('Complaint not found', 404));
+  }
+  if (!complaint.isPublic) {
+    return next(new ErrorResponse('This complaint is not public', 403));
+  }
+
+  // Idempotency check — don't allow duplicate upvotes
+  const alreadySupported = complaint.upvotes.supporters.some(
+    s => s.userId.toString() === req.user.id
+  );
+  if (alreadySupported) {
+    return res.status(409).json({ success: false, message: 'You have already supported this complaint' });
+  }
+
+  complaint.upvotes.supporters.push({ userId: req.user.id });
+  complaint.upvotes.count = complaint.upvotes.supporters.length;
+
+  // Recalculate community priority
+  const priority = calculateCommunityPriority(complaint);
+  complaint.communityPriority = priority;
+
+  await complaint.save();
+
+  res.status(200).json({
+    success: true,
+    data: {
+      upvoteCount: complaint.upvotes.count,
+      communityPriority: complaint.communityPriority,
+    },
+  });
+});
+
+// @desc    Remove upvote from a public complaint
+// @route   DELETE /api/complaints/:id/upvote
+// @access  Private (Citizen)
+exports.removeUpvote = asyncHandler(async (req, res, next) => {
+  const complaint = await Complaint.findById(req.params.id);
+  if (!complaint) {
+    return next(new ErrorResponse('Complaint not found', 404));
+  }
+
+  const supporterIndex = complaint.upvotes.supporters.findIndex(
+    s => s.userId.toString() === req.user.id
+  );
+  if (supporterIndex === -1) {
+    return res.status(409).json({ success: false, message: 'You have not supported this complaint' });
+  }
+
+  complaint.upvotes.supporters.splice(supporterIndex, 1);
+  complaint.upvotes.count = complaint.upvotes.supporters.length;
+
+  // Recalculate community priority
+  const priority = calculateCommunityPriority(complaint);
+  complaint.communityPriority = priority;
+
+  await complaint.save();
+
+  res.status(200).json({
+    success: true,
+    data: {
+      upvoteCount: complaint.upvotes.count,
+      communityPriority: complaint.communityPriority,
+    },
   });
 });
 
