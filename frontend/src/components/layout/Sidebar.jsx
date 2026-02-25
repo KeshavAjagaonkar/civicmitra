@@ -2,12 +2,13 @@ import React from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
-import { Home, FileText, Shield, Users, Building, Briefcase, Wrench, MessageSquare, HelpCircle, LogOut, User, BarChart3, CheckSquare } from 'lucide-react';
+import { Home, FileText, Shield, Users, Building, Briefcase, Wrench, MessageSquare, HelpCircle, LogOut, User, BarChart3, CheckSquare, Globe } from 'lucide-react';
 import { BarChart } from 'lucide-react';
 
 const navItems = {
   citizen: [
     { name: 'Dashboard', icon: Home, path: '/dashboard' },
+    { name: 'Public Feed', icon: Globe, path: '/public' },
     { name: 'My Complaints', icon: FileText, path: '/complaints' },
     { name: 'File Complaint', icon: FileText, path: '/complaints/create' },
     { name: 'Chat', icon: MessageSquare, path: '/chat' },

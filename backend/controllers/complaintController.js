@@ -659,36 +659,45 @@ exports.getPublicComplaints = asyncHandler(async (req, res, next) => {
 // @route   POST /api/complaints/:id/upvote
 // @access  Private (Citizen)
 exports.upvoteComplaint = asyncHandler(async (req, res, next) => {
-  const complaint = await Complaint.findById(req.params.id);
-  if (!complaint) {
-    return next(new ErrorResponse('Complaint not found', 404));
-  }
-  if (!complaint.isPublic) {
-    return next(new ErrorResponse('This complaint is not public', 403));
-  }
+  const complaintId = req.params.id;
+  const userId = req.user.id;
 
-  // Idempotency check — don't allow duplicate upvotes
-  const alreadySupported = complaint.upvotes.supporters.some(
-    s => s.userId.toString() === req.user.id
+  // Use atomic updates to prevent race conditions.
+  const updatedComplaint = await Complaint.findOneAndUpdate(
+    { 
+      _id: complaintId, 
+      isPublic: true, 
+      'upvotes.supporters.userId': { $ne: userId } 
+    },
+    {
+      $addToSet: { 'upvotes.supporters': { userId: userId, supportedAt: new Date() } },
+      $inc: { 'upvotes.count': 1 }
+    },
+    { new: true } // Return updated document for priority calculation
   );
-  if (alreadySupported) {
+
+  if (!updatedComplaint) {
+    const exists = await Complaint.findById(complaintId);
+    if (!exists) return next(new ErrorResponse('Complaint not found', 404));
+    if (!exists.isPublic) return next(new ErrorResponse('This complaint is not public', 403));
+    // If it exists and is public, but not updated, user already supported
     return res.status(409).json({ success: false, message: 'You have already supported this complaint' });
   }
 
-  complaint.upvotes.supporters.push({ userId: req.user.id });
-  complaint.upvotes.count = complaint.upvotes.supporters.length;
-
-  // Recalculate community priority
-  const priority = calculateCommunityPriority(complaint);
-  complaint.communityPriority = priority;
-
-  await complaint.save();
+  // Recalculate community priority based on new values
+  const priority = calculateCommunityPriority(updatedComplaint);
+  updatedComplaint.communityPriority = priority;
+  
+  await Complaint.updateOne(
+    { _id: complaintId }, 
+    { $set: { communityPriority: priority } }
+  );
 
   res.status(200).json({
     success: true,
     data: {
-      upvoteCount: complaint.upvotes.count,
-      communityPriority: complaint.communityPriority,
+      upvoteCount: updatedComplaint.upvotes.count,
+      communityPriority: priority,
     },
   });
 });
@@ -697,32 +706,41 @@ exports.upvoteComplaint = asyncHandler(async (req, res, next) => {
 // @route   DELETE /api/complaints/:id/upvote
 // @access  Private (Citizen)
 exports.removeUpvote = asyncHandler(async (req, res, next) => {
-  const complaint = await Complaint.findById(req.params.id);
-  if (!complaint) {
-    return next(new ErrorResponse('Complaint not found', 404));
-  }
+  const complaintId = req.params.id;
+  const userId = req.user.id;
 
-  const supporterIndex = complaint.upvotes.supporters.findIndex(
-    s => s.userId.toString() === req.user.id
+  const updatedComplaint = await Complaint.findOneAndUpdate(
+    { 
+      _id: complaintId, 
+      'upvotes.supporters.userId': userId 
+    },
+    {
+      $pull: { 'upvotes.supporters': { userId: userId } },
+      $inc: { 'upvotes.count': -1 }
+    },
+    { new: true }
   );
-  if (supporterIndex === -1) {
+
+  if (!updatedComplaint) {
+    const exists = await Complaint.findById(complaintId);
+    if (!exists) return next(new ErrorResponse('Complaint not found', 404));
     return res.status(409).json({ success: false, message: 'You have not supported this complaint' });
   }
 
-  complaint.upvotes.supporters.splice(supporterIndex, 1);
-  complaint.upvotes.count = complaint.upvotes.supporters.length;
+  // Recalculate community priority based on new values
+  const priority = calculateCommunityPriority(updatedComplaint);
+  updatedComplaint.communityPriority = priority;
 
-  // Recalculate community priority
-  const priority = calculateCommunityPriority(complaint);
-  complaint.communityPriority = priority;
-
-  await complaint.save();
+  await Complaint.updateOne(
+    { _id: complaintId }, 
+    { $set: { communityPriority: priority } }
+  );
 
   res.status(200).json({
     success: true,
     data: {
-      upvoteCount: complaint.upvotes.count,
-      communityPriority: complaint.communityPriority,
+      upvoteCount: updatedComplaint.upvotes.count,
+      communityPriority: priority,
     },
   });
 });

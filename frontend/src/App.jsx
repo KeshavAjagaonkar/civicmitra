@@ -25,6 +25,7 @@ import NotFound from './pages/NotFound';
 import ProfilePage from './pages/ProfilePage';
 
 // Citizen Pages
+import PublicFeed from './pages/citizen/PublicFeed';
 import CitizenDashboard from './pages/citizen/CitizenDashboard';
 import MyComplaints from './pages/citizen/MyComplaints';
 import FileComplaint from './pages/citizen/FileComplaint';
@@ -83,6 +84,7 @@ function App() {
 
             {/* ==== CITIZEN ROUTES (Slug-based) ==== */}
             <Route path="/:slug/dashboard" element={<CitizenRoute><CitizenDashboard /></CitizenRoute>} />
+            <Route path="/:slug/public" element={<CitizenRoute><PublicFeed /></CitizenRoute>} />
             <Route path="/:slug/complaints" element={<CitizenRoute><MyComplaints /></CitizenRoute>} />
             <Route path="/:slug/complaints/create" element={<CitizenRoute><FileComplaint /></CitizenRoute>} />
             <Route path="/:slug/complaints/:id" element={<CitizenRoute><ComplaintDetails /></CitizenRoute>} />
@@ -94,6 +96,7 @@ function App() {
 
             {/* ==== CITIZEN ROUTES (Legacy/Fallback without slug) ==== */}
             <Route path="/dashboard" element={<CitizenRoute><CitizenDashboard /></CitizenRoute>} />
+            <Route path="/public" element={<CitizenRoute><PublicFeed /></CitizenRoute>} />
             <Route path="/complaints" element={<CitizenRoute><MyComplaints /></CitizenRoute>} />
             <Route path="/complaints/create" element={<CitizenRoute><FileComplaint /></CitizenRoute>} />
             <Route path="/complaints/:id" element={<CitizenRoute><ComplaintDetails /></CitizenRoute>} />
