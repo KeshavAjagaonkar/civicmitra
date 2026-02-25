@@ -18,7 +18,7 @@ const createAndEmitNotification = async (userId, title, message, complaintId) =>
       io.to(userId.toString()).emit('new_notification', notification);
     }
   } catch (error) {
-    console.error(`Failed to create notification for user ${userId}:`, error);
+    // Notification creation failed silently — non-critical
   }
 };
 
@@ -38,7 +38,7 @@ exports.createComplaint = asyncHandler(async (req, res, next) => {
   if (!departmentId) {
     const finalCategory = classification.category || category;
     departmentId = await getDepartmentByCategory(finalCategory);
-    console.log(`🏢 Auto-assigned department for category "${finalCategory}":`, departmentId ? 'Found' : 'Not found');
+    // Department auto-assigned based on category
   }
 
   const newComplaintData = {
@@ -63,10 +63,9 @@ exports.createComplaint = asyncHandler(async (req, res, next) => {
     const summary = await summarizeComplaint(title, description, location, classification.category || category);
     if (summary) {
       newComplaintData.aiSummary = summary;
-      console.log('✅ AI Summary generated for complaint');
     }
   } catch (summaryError) {
-    console.error('⚠️ AI Summary generation failed (complaint will still be created):', summaryError.message);
+    // AI Summary generation failed — complaint will still be created without it
   }
 
   if (req.files && req.files.length > 0) {
@@ -97,7 +96,7 @@ exports.createComplaint = asyncHandler(async (req, res, next) => {
         );
       }
     } catch (assignError) {
-      console.error('Failed to auto-assign to staff:', assignError);
+      // Auto-assign to staff failed — complaint still created
     }
   }
 
@@ -108,7 +107,7 @@ exports.createComplaint = asyncHandler(async (req, res, next) => {
     complaint.chat = chat._id;
     await complaint.save();
   } catch (chatError) {
-    console.error('Failed to create chat:', chatError);
+    // Chat creation failed — complaint still created
   }
 
   res.status(201).json({ success: true, data: complaint });
@@ -141,7 +140,7 @@ exports.listComplaints = asyncHandler(async (req, res, next) => {
     .populate('department', 'name')
     .populate('workerId', 'name email')
     .sort({ createdAt: -1 });
-    
+
   res.status(200).json({ success: true, count: complaints.length, data: complaints });
 });
 
@@ -348,235 +347,235 @@ exports.updateComplaintByWorker = asyncHandler(async (req, res, next) => {
 // These are just placeholders to ensure routes don't crash.
 // We should verify if more specific logic is needed.
 
-exports.getUserStats = asyncHandler(async(req, res, next) => {
-    let query = {};
+exports.getUserStats = asyncHandler(async (req, res, next) => {
+  let query = {};
 
-    // Build query based on user role
-    if (req.user.role === 'citizen') {
-        query = { citizenId: req.user.id };
-    } else if (req.user.role === 'staff') {
-        query = { department: req.user.department?._id || req.user.department };
-    } else if (req.user.role === 'worker') {
-        query = { workerId: req.user.id };
+  // Build query based on user role
+  if (req.user.role === 'citizen') {
+    query = { citizenId: req.user.id };
+  } else if (req.user.role === 'staff') {
+    query = { department: req.user.department?._id || req.user.department };
+  } else if (req.user.role === 'worker') {
+    query = { workerId: req.user.id };
+  }
+  // Admin gets all complaints (empty query)
+
+  const total = await Complaint.countDocuments(query);
+  const resolved = await Complaint.countDocuments({ ...query, status: 'Resolved' });
+  const pending = await Complaint.countDocuments({ ...query, status: { $in: ['Submitted', 'In Progress'] } });
+  const submitted = await Complaint.countDocuments({ ...query, status: 'Submitted' });
+  const inProgress = await Complaint.countDocuments({ ...query, status: 'In Progress' });
+
+  res.status(200).json({
+    success: true,
+    data: {
+      total,
+      resolved,
+      pending,
+      submitted,
+      inProgress,
+      resolutionRate: total > 0 ? Math.round((resolved / total) * 100) : 0
     }
-    // Admin gets all complaints (empty query)
-
-    const total = await Complaint.countDocuments(query);
-    const resolved = await Complaint.countDocuments({ ...query, status: 'Resolved' });
-    const pending = await Complaint.countDocuments({ ...query, status: { $in: ['Submitted', 'In Progress'] } });
-    const submitted = await Complaint.countDocuments({ ...query, status: 'Submitted' });
-    const inProgress = await Complaint.countDocuments({ ...query, status: 'In Progress' });
-
-    res.status(200).json({
-        success: true,
-        data: {
-            total,
-            resolved,
-            pending,
-            submitted,
-            inProgress,
-            resolutionRate: total > 0 ? Math.round((resolved / total) * 100) : 0
-        }
-    });
+  });
 });
 
 exports.assignComplaint = asyncHandler(async (req, res, next) => {
-    // This is likely an admin function to assign a complaint to a department.
-    // Placeholder logic:
-    res.status(200).json({ success: true, message: "assignComplaint not fully implemented yet." });
+  // This is likely an admin function to assign a complaint to a department.
+  // Placeholder logic:
+  res.status(200).json({ success: true, message: "assignComplaint not fully implemented yet." });
 });
 
 exports.updateComplaintTimeline = asyncHandler(async (req, res, next) => {
-    // This is redundant with updateComplaintByWorker, but we keep it to prevent crashes.
-    // We should consolidate this logic later.
-    return exports.updateComplaintByWorker(req, res, next);
+  // This is redundant with updateComplaintByWorker, but we keep it to prevent crashes.
+  // We should consolidate this logic later.
+  return exports.updateComplaintByWorker(req, res, next);
 });
 
 exports.getRecentComplaints = asyncHandler(async (req, res, next) => {
-    // Logic for staff/admin to get recent complaints in their scope.
-    let query = {};
-    if (req.user.role === 'staff') {
-        query.department = req.user.department?._id || req.user.department;
-    } else if (req.user.role === 'worker') {
-        query.workerId = req.user.id;
-    }
-    // Admin gets all complaints (empty query)
+  // Logic for staff/admin to get recent complaints in their scope.
+  let query = {};
+  if (req.user.role === 'staff') {
+    query.department = req.user.department?._id || req.user.department;
+  } else if (req.user.role === 'worker') {
+    query.workerId = req.user.id;
+  }
+  // Admin gets all complaints (empty query)
 
-    const complaints = await Complaint.find(query)
-        .populate('citizenId', 'name email')
-        .populate('department', 'name')
-        .sort({ createdAt: -1 })
-        .limit(5);
-    res.status(200).json({ success: true, data: complaints });
+  const complaints = await Complaint.find(query)
+    .populate('citizenId', 'name email')
+    .populate('department', 'name')
+    .sort({ createdAt: -1 })
+    .limit(5);
+  res.status(200).json({ success: true, data: complaints });
 });
 
 // @desc    Get detailed worker performance report
 // @route   GET /api/complaints/worker-reports
 // @access  Private (Worker)
 exports.getWorkerReports = asyncHandler(async (req, res, next) => {
-    const workerId = req.user.id;
-    const { period = 'thisMonth', category = 'all' } = req.query;
+  const workerId = req.user.id;
+  const { period = 'thisMonth', category = 'all' } = req.query;
 
-    // Calculate date range based on period
-    const now = new Date();
-    let startDate;
+  // Calculate date range based on period
+  const now = new Date();
+  let startDate;
 
-    switch (period) {
-        case 'thisMonth':
-            startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-            break;
-        case 'lastMonth':
-            startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-            const endDate = new Date(now.getFullYear(), now.getMonth(), 0);
-            break;
-        case 'thisYear':
-            startDate = new Date(now.getFullYear(), 0, 1);
-            break;
-        default:
-            startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+  switch (period) {
+    case 'thisMonth':
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      break;
+    case 'lastMonth':
+      startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const endDate = new Date(now.getFullYear(), now.getMonth(), 0);
+      break;
+    case 'thisYear':
+      startDate = new Date(now.getFullYear(), 0, 1);
+      break;
+    default:
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+  }
+
+  // Build query
+  let query = { workerId };
+  if (period === 'lastMonth') {
+    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+    query.createdAt = { $gte: startDate, $lte: lastMonthEnd };
+  } else {
+    query.createdAt = { $gte: startDate };
+  }
+
+  if (category !== 'all') {
+    query.category = category;
+  }
+
+  // Get all complaints for the worker in the period
+  const allComplaints = await Complaint.find(query)
+    .populate('citizenId', 'name email')
+    .populate('department', 'name')
+    .populate('workerId', 'name email')
+    .sort({ createdAt: -1 });
+
+  // Calculate statistics
+  const totalTasks = allComplaints.length;
+  const completedTasks = allComplaints.filter(c => c.status === 'Resolved').length;
+  const inProgressTasks = allComplaints.filter(c => c.status === 'In Progress').length;
+  const overdueTasks = allComplaints.filter(c =>
+    c.deadline && new Date(c.deadline) < now && c.status !== 'Resolved'
+  ).length;
+
+  // Calculate average completion time (for resolved complaints)
+  const resolvedComplaints = allComplaints.filter(c => c.status === 'Resolved');
+  let averageCompletionTime = 'N/A';
+  if (resolvedComplaints.length > 0) {
+    const totalDays = resolvedComplaints.reduce((sum, c) => {
+      const created = new Date(c.createdAt);
+      const resolved = c.timeline?.find(t => t.status === 'Resolved');
+      if (resolved) {
+        const resolvedDate = new Date(resolved.date);
+        const days = (resolvedDate - created) / (1000 * 60 * 60 * 24);
+        return sum + days;
+      }
+      return sum;
+    }, 0);
+    const avgDays = (totalDays / resolvedComplaints.length).toFixed(1);
+    averageCompletionTime = `${avgDays} days`;
+  }
+
+  // Calculate efficiency (completion rate)
+  const efficiency = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+  // Calculate average rating (from feedback)
+  const ratedComplaints = allComplaints.filter(c => c.feedback && c.feedback.rating);
+  const averageRating = ratedComplaints.length > 0
+    ? (ratedComplaints.reduce((sum, c) => sum + c.feedback.rating, 0) / ratedComplaints.length).toFixed(1)
+    : 0;
+
+  // Get category breakdown
+  const categoryBreakdown = {};
+  allComplaints.forEach(c => {
+    if (!categoryBreakdown[c.category]) {
+      categoryBreakdown[c.category] = { total: 0, completed: 0 };
     }
-
-    // Build query
-    let query = { workerId };
-    if (period === 'lastMonth') {
-        const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
-        query.createdAt = { $gte: startDate, $lte: lastMonthEnd };
-    } else {
-        query.createdAt = { $gte: startDate };
+    categoryBreakdown[c.category].total++;
+    if (c.status === 'Resolved') {
+      categoryBreakdown[c.category].completed++;
     }
+  });
 
-    if (category !== 'all') {
-        query.category = category;
-    }
+  const taskBreakdown = Object.keys(categoryBreakdown).map(cat => ({
+    category: cat,
+    total: categoryBreakdown[cat].total,
+    completed: categoryBreakdown[cat].completed,
+    percentage: categoryBreakdown[cat].total > 0
+      ? Math.round((categoryBreakdown[cat].completed / categoryBreakdown[cat].total) * 100)
+      : 0
+  }));
 
-    // Get all complaints for the worker in the period
-    const allComplaints = await Complaint.find(query)
-        .populate('citizenId', 'name email')
-        .populate('department', 'name')
-        .populate('workerId', 'name email')
-        .sort({ createdAt: -1 });
+  // Get monthly trend (last 6 months)
+  const monthlyTrend = [];
+  for (let i = 5; i >= 0; i--) {
+    const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
 
-    // Calculate statistics
-    const totalTasks = allComplaints.length;
-    const completedTasks = allComplaints.filter(c => c.status === 'Resolved').length;
-    const inProgressTasks = allComplaints.filter(c => c.status === 'In Progress').length;
-    const overdueTasks = allComplaints.filter(c =>
-        c.deadline && new Date(c.deadline) < now && c.status !== 'Resolved'
-    ).length;
-
-    // Calculate average completion time (for resolved complaints)
-    const resolvedComplaints = allComplaints.filter(c => c.status === 'Resolved');
-    let averageCompletionTime = 'N/A';
-    if (resolvedComplaints.length > 0) {
-        const totalDays = resolvedComplaints.reduce((sum, c) => {
-            const created = new Date(c.createdAt);
-            const resolved = c.timeline?.find(t => t.status === 'Resolved');
-            if (resolved) {
-                const resolvedDate = new Date(resolved.date);
-                const days = (resolvedDate - created) / (1000 * 60 * 60 * 24);
-                return sum + days;
-            }
-            return sum;
-        }, 0);
-        const avgDays = (totalDays / resolvedComplaints.length).toFixed(1);
-        averageCompletionTime = `${avgDays} days`;
-    }
-
-    // Calculate efficiency (completion rate)
-    const efficiency = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-
-    // Calculate average rating (from feedback)
-    const ratedComplaints = allComplaints.filter(c => c.feedback && c.feedback.rating);
-    const averageRating = ratedComplaints.length > 0
-        ? (ratedComplaints.reduce((sum, c) => sum + c.feedback.rating, 0) / ratedComplaints.length).toFixed(1)
-        : 0;
-
-    // Get category breakdown
-    const categoryBreakdown = {};
-    allComplaints.forEach(c => {
-        if (!categoryBreakdown[c.category]) {
-            categoryBreakdown[c.category] = { total: 0, completed: 0 };
-        }
-        categoryBreakdown[c.category].total++;
-        if (c.status === 'Resolved') {
-            categoryBreakdown[c.category].completed++;
-        }
+    const monthComplaints = await Complaint.find({
+      workerId,
+      createdAt: { $gte: monthStart, $lte: monthEnd }
     });
 
-    const taskBreakdown = Object.keys(categoryBreakdown).map(cat => ({
-        category: cat,
-        total: categoryBreakdown[cat].total,
-        completed: categoryBreakdown[cat].completed,
-        percentage: categoryBreakdown[cat].total > 0
-            ? Math.round((categoryBreakdown[cat].completed / categoryBreakdown[cat].total) * 100)
-            : 0
-    }));
+    const monthCompleted = monthComplaints.filter(c => c.status === 'Resolved').length;
+    const monthTotal = monthComplaints.length;
+    const monthEfficiency = monthTotal > 0 ? Math.round((monthCompleted / monthTotal) * 100) : 0;
 
-    // Get monthly trend (last 6 months)
-    const monthlyTrend = [];
-    for (let i = 5; i >= 0; i--) {
-        const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
+    monthlyTrend.push({
+      month: monthStart.toLocaleString('en-US', { month: 'short' }),
+      completed: monthCompleted,
+      total: monthTotal,
+      efficiency: monthEfficiency
+    });
+  }
 
-        const monthComplaints = await Complaint.find({
-            workerId,
-            createdAt: { $gte: monthStart, $lte: monthEnd }
-        });
+  // Get recent tasks with details
+  const recentTasks = allComplaints.slice(0, 10).map(c => {
+    const createdDate = new Date(c.createdAt);
+    const resolvedEntry = c.timeline?.find(t => t.status === 'Resolved');
+    let completionTime = 'N/A';
 
-        const monthCompleted = monthComplaints.filter(c => c.status === 'Resolved').length;
-        const monthTotal = monthComplaints.length;
-        const monthEfficiency = monthTotal > 0 ? Math.round((monthCompleted / monthTotal) * 100) : 0;
-
-        monthlyTrend.push({
-            month: monthStart.toLocaleString('en-US', { month: 'short' }),
-            completed: monthCompleted,
-            total: monthTotal,
-            efficiency: monthEfficiency
-        });
+    if (resolvedEntry) {
+      const resolvedDate = new Date(resolvedEntry.date);
+      const days = ((resolvedDate - createdDate) / (1000 * 60 * 60 * 24)).toFixed(1);
+      completionTime = `${days} days`;
+    } else if (c.status === 'In Progress') {
+      const currentDays = ((now - createdDate) / (1000 * 60 * 60 * 24)).toFixed(1);
+      completionTime = `${currentDays} days`;
     }
 
-    // Get recent tasks with details
-    const recentTasks = allComplaints.slice(0, 10).map(c => {
-        const createdDate = new Date(c.createdAt);
-        const resolvedEntry = c.timeline?.find(t => t.status === 'Resolved');
-        let completionTime = 'N/A';
+    return {
+      id: c._id,
+      title: c.title,
+      category: c.category,
+      status: c.status,
+      completionTime,
+      rating: c.feedback?.rating || null,
+      date: c.createdAt
+    };
+  });
 
-        if (resolvedEntry) {
-            const resolvedDate = new Date(resolvedEntry.date);
-            const days = ((resolvedDate - createdDate) / (1000 * 60 * 60 * 24)).toFixed(1);
-            completionTime = `${days} days`;
-        } else if (c.status === 'In Progress') {
-            const currentDays = ((now - createdDate) / (1000 * 60 * 60 * 24)).toFixed(1);
-            completionTime = `${currentDays} days`;
-        }
-
-        return {
-            id: c._id,
-            title: c.title,
-            category: c.category,
-            status: c.status,
-            completionTime,
-            rating: c.feedback?.rating || null,
-            date: c.createdAt
-        };
-    });
-
-    res.status(200).json({
-        success: true,
-        data: {
-            summary: {
-                totalTasks,
-                completedTasks,
-                inProgressTasks,
-                overdueTasks,
-                averageCompletionTime,
-                efficiency,
-                rating: parseFloat(averageRating)
-            },
-            taskBreakdown,
-            monthlyTrend,
-            recentTasks
-        }
-    });
+  res.status(200).json({
+    success: true,
+    data: {
+      summary: {
+        totalTasks,
+        completedTasks,
+        inProgressTasks,
+        overdueTasks,
+        averageCompletionTime,
+        efficiency,
+        rating: parseFloat(averageRating)
+      },
+      taskBreakdown,
+      monthlyTrend,
+      recentTasks
+    }
+  });
 });
 

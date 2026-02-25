@@ -28,10 +28,9 @@ if (hasCloudinaryConfig) {
         allowed_formats: ['jpeg', 'png', 'jpg', 'pdf', 'mp4'],
       },
     });
-    console.log('✅ Using Cloudinary storage');
+
   } catch (error) {
-    console.error('❌ Cloudinary initialization failed:', error.message);
-    console.log('⚠️  Falling back to local storage');
+
     hasCloudinaryConfig = false;
   }
 }
@@ -54,7 +53,7 @@ if (!hasCloudinaryConfig) {
       cb(null, `${base}_${timestamp}${ext}`);
     },
   });
-  console.log('✅ Using local disk storage at:', uploadsDir);
+
 }
 
 const fileFilter = (req, file, cb) => {

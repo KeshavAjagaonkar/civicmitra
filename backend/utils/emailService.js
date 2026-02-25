@@ -16,10 +16,9 @@ if (isEmailConfigured()) {
       pass: process.env.EMAIL_PASS
     }
   });
-  console.log('✅ Email service configured with:', process.env.EMAIL_USER);
+
 } else {
-  console.log('⚠️  Email service not configured. Emails will not be sent.');
-  console.log('   To enable emails, add EMAIL_USER and EMAIL_PASS to .env file');
+
 }
 
 /**
@@ -30,11 +29,8 @@ if (isEmailConfigured()) {
  * @returns {Promise<{success: boolean, error?: string}>}
  */
 exports.sendEmail = async (to, subject, html) => {
-  // If email is not configured, just log and return
+  // If email is not configured, return silently
   if (!isEmailConfigured()) {
-    console.log(`📧 Email simulation (not configured):`);
-    console.log(`   To: ${to}`);
-    console.log(`   Subject: ${subject}`);
     return { success: false, error: 'Email service not configured' };
   }
 
@@ -47,10 +43,10 @@ exports.sendEmail = async (to, subject, html) => {
     };
 
     const info = await transporter.sendMail(mailOptions);
-    console.log(`✅ Email sent to: ${to} | Subject: ${subject}`);
+
     return { success: true, messageId: info.messageId };
   } catch (error) {
-    console.error('❌ Email send error:', error.message);
+
     return { success: false, error: error.message };
   }
 };

@@ -20,7 +20,7 @@ const upload = require('../middleware/uploadMiddleware');
 const { validate, createComplaintSchema, updateComplaintStatusSchema } = require('../middleware/validationMiddleware');
 
 router.route('/')
-  .post(protect, upload.array('attachments'), createComplaint);
+  .post(protect, upload.array('attachments'), validate(createComplaintSchema), createComplaint);
 
 // Explicit list endpoint to avoid any ambiguity
 router.route('/all').get(protect, authorize('staff', 'admin', 'worker'), listComplaints);

@@ -1,18 +1,19 @@
 const { z } = require('zod');
 
-// The main validation function
+// The main validation function — uses safeParse to strip unknown fields
 const validate = (schema) => (req, res, next) => {
-  try {
-    schema.parse(req.body);
-    next();
-  } catch (error) {
-    // Reformat Zod errors for a cleaner API response that's easier for the frontend
-    const formattedErrors = error.errors.map(err => ({
+  const result = schema.safeParse(req.body);
+  if (!result.success) {
+    const formattedErrors = result.error.errors.map(err => ({
       field: err.path.join('.'),
       message: err.message,
     }));
     return res.status(400).json({ success: false, message: "Validation failed", errors: formattedErrors });
   }
+  // CRITICAL: Replace req.body with parsed data — strips unknown fields
+  // This is defense-in-depth against mass assignment
+  req.body = result.data;
+  next();
 };
 
 // --- AUTHENTICATION SCHEMAS ---
@@ -57,10 +58,10 @@ const changePasswordSchema = z.object({
 // --- OTHER SCHEMAS (No changes needed, but included for completeness) ---
 
 const createComplaintSchema = z.object({
-  title: z.string().min(1, { message: 'Title is required' }).max(100),
-  description: z.string().min(1, { message: 'Description is required' }).max(1000),
+  title: z.string().min(5, { message: 'Title must be at least 5 characters' }).max(100),
+  description: z.string().min(20, { message: 'Description must be at least 20 characters' }).max(1000),
   category: z.enum([
-    'Roads', 'Water Supply', 'Sanitation', 'Electricity', 
+    'Roads', 'Water Supply', 'Sanitation', 'Electricity',
     'Public Health', 'Street Lights', 'Drainage', 'Garbage', 'Other'
   ]),
   location: z.string().min(1, { message: 'Location is required' }),
