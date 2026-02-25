@@ -15,6 +15,7 @@ const {
   updateAssignment,
   getWorkerReports,
   getPublicComplaints,
+  getNearbyComplaints,
   upvoteComplaint,
   removeUpvote,
 } = require('../controllers/complaintController');
@@ -27,6 +28,7 @@ router.route('/')
 
 // Community routes — MUST be before /:id to avoid Express matching "public" as an ID
 router.route('/public').get(protect, getPublicComplaints);
+router.route('/nearby').get(protect, getNearbyComplaints);
 
 // Explicit list endpoint to avoid any ambiguity
 router.route('/all').get(protect, authorize('staff', 'admin', 'worker'), listComplaints);

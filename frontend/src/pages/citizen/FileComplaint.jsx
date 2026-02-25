@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
-import { Upload ,FileText} from 'lucide-react';
+import { Upload, FileText, MapPin } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useDropzone } from 'react-dropzone';
 import useApi from '@/hooks/useApi';
@@ -32,6 +32,8 @@ const complaintSchema = z.object({
   priority: z.enum(['Low', 'Medium', 'High'], { message: 'Please select a priority level' }),
   department: z.string().optional(),
   location: z.string().min(1, { message: 'Location is required' }),
+  lng: z.number().optional(),
+  lat: z.number().optional(),
   attachments: z.any().optional(),
 });
 
@@ -72,6 +74,8 @@ const FileComplaint = () => {
       priority: 'Medium',
       department: '',
       location: '',
+      lng: undefined,
+      lat: undefined,
     },
   });
 
@@ -267,12 +271,38 @@ const FileComplaint = () => {
             {/* Location */}
             <div>
               <label htmlFor="location" className="block text-sm font-medium mb-2">Location</label>
-              <Input 
-                id="location" 
-                placeholder="e.g., Near City Hall" 
-                className="glass-input" 
-                {...register('location')} 
-              />
+              <div className="flex gap-2">
+                <Input 
+                  id="location" 
+                  placeholder="e.g., Near City Hall" 
+                  className="glass-input flex-1" 
+                  {...register('location')} 
+                />
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  title="Use my current location"
+                  onClick={() => {
+                    if (navigator.geolocation) {
+                      toast({ title: 'Fetching location...', description: 'Please allow location access.' });
+                      navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                          setValue('lng', position.coords.longitude);
+                          setValue('lat', position.coords.latitude);
+                          toast({ title: 'Location captured!', description: 'Coordinates successfully attached to your complaint.', variant: 'success' });
+                        },
+                        (error) => {
+                          toast({ title: 'Location failed', description: error.message, variant: 'destructive' });
+                        }
+                      );
+                    } else {
+                      toast({ title: 'Not supported', description: 'Geolocation is not supported by your browser.', variant: 'destructive' });
+                    }
+                  }}
+                >
+                  <MapPin className="w-5 h-5 text-blue-500" />
+                </Button>
+              </div>
               {errors.location && <p className="text-red-500 text-xs mt-1">{errors.location.message}</p>}
             </div>
 

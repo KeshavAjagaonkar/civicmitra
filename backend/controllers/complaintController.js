@@ -42,7 +42,7 @@ const broadcastToSupporters = async (complaint, title, message) => {
 // @route   POST /api/complaints
 // @access  Private (Citizen)
 exports.createComplaint = asyncHandler(async (req, res, next) => {
-  const { title, description, category, location, department: userDepartment, priority } = req.body;
+  const { title, description, category, location, department: userDepartment, priority, lng, lat } = req.body;
   if (!title || !description || !location) {
     return next(new ErrorResponse('Title, description, and location are required', 400));
   }
@@ -57,13 +57,24 @@ exports.createComplaint = asyncHandler(async (req, res, next) => {
     // Department auto-assigned based on category
   }
 
+  let locationData = {
+    type: 'Point',
+    address: location
+  };
+  
+  if (lng && lat) {
+    locationData.coordinates = [parseFloat(lng), parseFloat(lat)];
+  } else {
+    locationData.coordinates = [72.8777, 19.0760]; // fallback to Mumbai if not provided
+  }
+
   const newComplaintData = {
     title,
     description,
     category: classification.category || category,
     department: departmentId,
     priority: priority || classification.priority || 'Medium',
-    location,
+    location: locationData,
     citizenId: req.user.id,
     aiClassification: {
       confidence: classification.confidence,
@@ -597,6 +608,57 @@ exports.getWorkerReports = asyncHandler(async (req, res, next) => {
 // ============================================================
 // COMMUNITY FEATURES — Public Feed, Upvotes
 // ============================================================
+
+// @desc    Get nearby public complaints
+// @route   GET /api/complaints/nearby
+// @access  Private
+exports.getNearbyComplaints = asyncHandler(async (req, res, next) => {
+  const lat = parseFloat(req.query.lat);
+  const lng = parseFloat(req.query.lng);
+  const radius = parseInt(req.query.radius, 10) || 2000;
+
+  if (!lat || !lng) {
+    return next(new ErrorResponse('Please provide lat and lng coordinates', 400));
+  }
+
+  const complaints = await Complaint.find({
+    isPublic: true,
+    'location.coordinates': {
+      $nearSphere: {
+        $geometry: {
+          type: 'Point',
+          coordinates: [lng, lat],
+        },
+        $maxDistance: radius,
+      },
+    },
+  })
+    .select('-upvotes.supporters')
+    .sort({ 'communityPriority.score': -1 })
+    .limit(50)
+    .populate('citizenId', 'name')
+    .populate('department', 'name')
+    .lean();
+
+  const userId = req.user.id;
+  const userSupportedIds = await Complaint.find({
+    _id: { $in: complaints.map(c => c._id) },
+    'upvotes.supporters.userId': userId,
+  }).select('_id').lean();
+
+  const supportedSet = new Set(userSupportedIds.map(c => c._id.toString()));
+
+  const enrichedComplaints = complaints.map(c => ({
+    ...c,
+    hasUserSupported: supportedSet.has(c._id.toString()),
+  }));
+
+  res.status(200).json({
+    success: true,
+    count: enrichedComplaints.length,
+    data: enrichedComplaints,
+  });
+});
 
 // @desc    Get public complaints feed (sorted by community priority)
 // @route   GET /api/complaints/public

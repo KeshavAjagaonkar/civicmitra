@@ -65,6 +65,8 @@ const createComplaintSchema = z.object({
     'Public Health', 'Street Lights', 'Drainage', 'Garbage', 'Other'
   ]),
   location: z.string().min(1, { message: 'Location is required' }),
+  lng: z.union([z.string(), z.number()]).optional(),
+  lat: z.union([z.string(), z.number()]).optional(),
   department: z.string().optional(),
   priority: z.enum(['Low', 'Medium', 'High']).optional(),
 });
