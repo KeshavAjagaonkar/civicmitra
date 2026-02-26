@@ -76,8 +76,13 @@ const LocationMap = ({ complaint }) => {
 
 const statusVariant = {
   Submitted: 'secondary',
+  'Under Review': 'secondary',
+  'Needs Info': 'warning',
   'In Progress': 'default',
   Resolved: 'outline',
+  Reopened: 'warning',
+  Transferred: 'default',
+  Rejected: 'destructive',
   Closed: 'destructive',
 };
 
@@ -156,27 +161,22 @@ const ComplaintDetails = () => {
   }, [complaint, userRole, request]);
 
   const handleStatusChange = async (value) => {
+    const rejectionReason = complaint._rejectionReason;
+    if (value === 'Rejected' && (!rejectionReason || rejectionReason.trim().length < 10)) {
+      toast({ title: 'Rejection reason required', description: 'Please enter a rejection reason (min 10 characters).', variant: 'destructive' });
+      return;
+    }
     try {
-      const result = await request(`/api/complaints/${id}/timeline`, 'PUT', {
-        action: 'Status Update',
-        status: value,
-        notes: `Status changed to ${value}`
-      });
+      const body = { status: value };
+      if (value === 'Rejected') body.rejectionReason = rejectionReason.trim();
+      const result = await request(`/api/complaints/${id}/status`, 'PATCH', body);
       if (result.success) {
         setCurrentStatus(value);
-        setComplaint(prev => ({ ...prev, status: value }));
-        toast({
-          title: 'Status updated',
-          description: 'Complaint status has been updated successfully.',
-          variant: 'success'
-        });
+        setComplaint(prev => ({ ...prev, status: value, _rejectionReason: undefined }));
+        toast({ title: 'Status updated', description: `Complaint is now "${value}".`, variant: 'success' });
       }
     } catch (err) {
-      toast({
-        title: 'Failed to update status',
-        description: err.message,
-        variant: 'destructive'
-      });
+      toast({ title: 'Failed to update status', description: err.message, variant: 'destructive' });
     }
   };
 
@@ -330,22 +330,48 @@ const ComplaintDetails = () => {
 
               <div className="flex justify-between items-center">
                 <strong>Status:</strong>
-                {(userRole === 'staff' || userRole === 'worker') ? (
+                {(userRole === 'staff' || userRole === 'admin') ? (
                   <Select value={currentStatus} onValueChange={handleStatusChange}>
-                    <SelectTrigger className="w-[180px] glass-input">
+                    <SelectTrigger className="w-[200px] glass-input">
                       <SelectValue placeholder="Select status" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Submitted">Submitted</SelectItem>
+                      <SelectItem value="Under Review">Under Review</SelectItem>
+                      <SelectItem value="Needs Info">Needs Info</SelectItem>
                       <SelectItem value="In Progress">In Progress</SelectItem>
+                      <SelectItem value="Transferred">Transferred</SelectItem>
                       <SelectItem value="Resolved">Resolved</SelectItem>
+                      <SelectItem value="Rejected">Rejected</SelectItem>
                       <SelectItem value="Closed">Closed</SelectItem>
                     </SelectContent>
                   </Select>
+                ) : userRole === 'worker' ? (
+                  <Select value={currentStatus} onValueChange={handleStatusChange}>
+                    <SelectTrigger className="w-[200px] glass-input">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="In Progress">In Progress</SelectItem>
+                      <SelectItem value="Resolved">Resolved</SelectItem>
+                    </SelectContent>
+                  </Select>
                 ) : (
-                  <Badge variant={statusVariant[complaint.status]}>{complaint.status}</Badge>
+                  <Badge variant={statusVariant[complaint.status] || 'secondary'}>{complaint.status}</Badge>
                 )}
               </div>
+              {/* Rejection reason field — shown only when Rejected is selected by staff/admin */}
+              {(userRole === 'staff' || userRole === 'admin') && currentStatus === 'Rejected' && (
+                <div className="flex flex-col gap-1">
+                  <strong className="text-sm">Rejection Reason <span className="text-red-500">*</span></strong>
+                  <textarea
+                    className="w-full border rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
+                    rows={2}
+                    placeholder="Explain why this complaint is being rejected (min 10 characters)..."
+                    value={complaint._rejectionReason || ''}
+                    onChange={e => setComplaint(prev => ({ ...prev, _rejectionReason: e.target.value }))}
+                  />
+                </div>
+              )}
               <div className="flex justify-between items-center">
                 <strong>Priority:</strong>
                 <Badge variant="outline" className={priorityStyles[complaint.priority]}>

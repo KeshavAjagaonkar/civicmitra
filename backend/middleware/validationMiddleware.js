@@ -72,8 +72,12 @@ const createComplaintSchema = z.object({
 });
 
 const updateComplaintStatusSchema = z.object({
-  status: z.enum(['Submitted', 'In Progress', 'Resolved', 'Closed']),
-  remarks: z.string().optional(),
+  status: z.enum([
+    'Submitted', 'Under Review', 'Needs Info', 'In Progress',
+    'Rejected', 'Transferred', 'Resolved', 'Reopened', 'Closed',
+  ]),
+  rejectionReason: z.string().optional(),
+  notes: z.string().optional(),
 });
 
 const updateUserRoleSchema = z.object({

@@ -4,7 +4,11 @@ const TimelineEventSchema = new mongoose.Schema({
   action: {
     type: String,
     required: true,
-    enum: ['Complaint Submitted', 'Assigned to Worker', 'In Progress', 'Update', 'Resolved', 'Closed'],
+    enum: [
+      'Complaint Submitted', 'Under Review', 'Needs Info', 'Assigned to Worker',
+      'In Progress', 'Update', 'Resolved', 'Rejected', 'Transferred',
+      'Reopened', 'Closed', 'Status Update', 'Department Assigned',
+    ],
   },
   status: {
     type: String,
@@ -97,8 +101,23 @@ const ComplaintSchema = new mongoose.Schema({
   ],
   status: {
     type: String,
-    enum: ['Submitted', 'In Progress', 'Resolved', 'Closed'],
+    enum: [
+      'Submitted',     // initial — citizen just filed it
+      'Under Review',  // staff is reviewing
+      'Needs Info',    // staff needs more details from citizen
+      'In Progress',   // worker assigned and working
+      'Rejected',      // invalid/out of scope (rejectionReason required)
+      'Transferred',   // routed to a different department
+      'Resolved',      // work completed (citizen can dispute within 7 days)
+      'Reopened',      // citizen disputed resolution
+      'Closed',        // terminal state — resolved + accepted or admin closed
+    ],
     default: 'Submitted',
+  },
+  rejectionReason: {
+    type: String,
+    // Required when status is Rejected — enforced in controller, not schema level
+    // so that existing data isn't broken by a strict schema validator
   },
   citizenId: {
     type: mongoose.Schema.Types.ObjectId,

@@ -83,7 +83,11 @@ const ComplaintManagement = () => {
   }, [complaints, searchTerm, statusFilter, priorityFilter, workerFilter]);
 
   const getStatusVariant = (status) => {
-    const variants = { 'Submitted': 'secondary', 'In Progress': 'default', 'Resolved': 'outline', 'Closed': 'destructive' };
+    const variants = {
+      'Submitted': 'secondary', 'Under Review': 'secondary', 'Needs Info': 'warning',
+      'In Progress': 'default', 'Transferred': 'default', 'Resolved': 'outline',
+      'Reopened': 'warning', 'Rejected': 'destructive', 'Closed': 'destructive',
+    };
     return variants[status] || 'secondary';
   };
 
@@ -116,10 +120,10 @@ const ComplaintManagement = () => {
 
   const getComplaintStats = () => {
     const total = complaints.length;
-    const submitted = complaints.filter(c => c.status === 'Submitted').length;
-    const inProgress = complaints.filter(c => c.status === 'In Progress').length;
+    const submitted = complaints.filter(c => ['Submitted', 'Under Review', 'Needs Info'].includes(c.status)).length;
+    const inProgress = complaints.filter(c => ['In Progress', 'Reopened'].includes(c.status)).length;
     const resolved = complaints.filter(c => c.status === 'Resolved').length;
-    const unassigned = complaints.filter(c => !c.workerId).length;
+    const unassigned = complaints.filter(c => !c.workerId && !['Rejected', 'Closed'].includes(c.status)).length;
     return { total, submitted, inProgress, resolved, unassigned };
   };
 
@@ -191,8 +195,14 @@ const ComplaintManagement = () => {
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="Submitted">Submitted</SelectItem>
+                  <SelectItem value="Under Review">Under Review</SelectItem>
+                  <SelectItem value="Needs Info">Needs Info</SelectItem>
                   <SelectItem value="In Progress">In Progress</SelectItem>
+                  <SelectItem value="Transferred">Transferred</SelectItem>
                   <SelectItem value="Resolved">Resolved</SelectItem>
+                  <SelectItem value="Reopened">Reopened</SelectItem>
+                  <SelectItem value="Rejected">Rejected</SelectItem>
+                  <SelectItem value="Closed">Closed</SelectItem>
                 </SelectContent>
               </Select>
             </div>

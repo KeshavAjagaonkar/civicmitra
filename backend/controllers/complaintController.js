@@ -201,20 +201,56 @@ exports.getComplaintById = asyncHandler(async (req, res, next) => {
   res.status(200).json({ success: true, data: complaint });
 });
 
+// Valid state transitions — enforced to prevent illegal status jumps.
+// This acts as the system's state machine guard.
+const VALID_TRANSITIONS = {
+  'Submitted':     ['Under Review', 'Rejected', 'In Progress', 'Transferred'],
+  'Under Review':  ['Needs Info', 'In Progress', 'Rejected', 'Transferred'],
+  'Needs Info':    ['Under Review', 'Rejected'],
+  'In Progress':   ['Resolved', 'Under Review'],
+  'Resolved':      ['Closed', 'Reopened'],
+  'Reopened':      ['In Progress', 'Rejected'],
+  'Transferred':   [],  // terminal from source dept perspective
+  'Rejected':      [],  // terminal
+  'Closed':        [],  // terminal
+};
+
 // @desc    Update complaint status by Staff/Admin
 // @route   PATCH /api/complaints/:id/status
 // @access  Private (Staff, Admin)
 exports.updateComplaintStatus = asyncHandler(async (req, res, next) => {
+  const { status, rejectionReason, notes } = req.body;
+
   let complaint = await Complaint.findById(req.params.id);
   if (!complaint) { return next(new ErrorResponse(`Complaint not found`, 404)); }
 
+  // Validate the state transition
+  const allowedNext = VALID_TRANSITIONS[complaint.status] || [];
+  if (!allowedNext.includes(status)) {
+    return next(new ErrorResponse(
+      `Cannot transition from "${complaint.status}" to "${status}". Allowed: ${allowedNext.join(', ') || 'none (terminal state)'}`,
+      400
+    ));
+  }
+
+  // Rejection requires a reason
+  if (status === 'Rejected') {
+    if (!rejectionReason || rejectionReason.trim().length < 10) {
+      return next(new ErrorResponse('A rejection reason (min 10 characters) is required when rejecting a complaint', 400));
+    }
+    complaint.rejectionReason = rejectionReason.trim();
+  }
+
+  const timelineNote = notes?.trim() ||
+    (status === 'Rejected' ? `Rejected: ${rejectionReason}` : `Status changed to ${status} by ${req.user.role}.`);
+
   complaint.timeline.push({
-    action: 'Status Update',
-    status: req.body.status,
-    notes: `Status changed to ${req.body.status} by ${req.user.role}.`,
+    action: status,
+    status,
+    notes: timelineNote,
     updatedBy: req.user.id,
   });
-  complaint.status = req.body.status;
+  complaint.status = status;
   await complaint.save();
 
   await broadcastToSupporters(complaint, 'Status Updated', `Complaint "${complaint.title}" is now "${complaint.status}".`);
