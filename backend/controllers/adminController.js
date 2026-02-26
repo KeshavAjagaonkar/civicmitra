@@ -176,20 +176,36 @@ exports.getAnalytics = asyncHandler(async (req, res, next) => {
 
 // @desc    Get all users (with optional filtering by role and department)
 // @route   GET /api/admin/users
-// @access  Private/Admin
+// @access  Private/Admin, Staff
 exports.getUsers = asyncHandler(async (req, res, next) => {
   const query = {};
-  if (req.query.role) {
-    query.role = req.query.role;
-  }
-  if (req.query.department) {
-    query.department = req.query.department;
-  }
+  if (req.query.role) query.role = req.query.role;
+  if (req.query.department) query.department = req.query.department;
 
   const users = await User.find(query)
     .select('-password')
-    .populate('department', 'name description');
-    
+    .populate('department', 'name description')
+    .lean();
+
+  // For worker lists, attach active task count so staff can see workload
+  // before assigning. Active = any status that is not Resolved/Closed/Rejected.
+  if (req.query.role === 'worker' && users.length > 0) {
+    const workerIds = users.map(u => u._id);
+    const activeCounts = await Complaint.aggregate([
+      {
+        $match: {
+          workerId: { $in: workerIds },
+          status: { $nin: ['Resolved', 'Closed', 'Rejected'] },
+        },
+      },
+      { $group: { _id: '$workerId', count: { $sum: 1 } } },
+    ]);
+    const countMap = Object.fromEntries(activeCounts.map(r => [r._id.toString(), r.count]));
+    users.forEach(u => {
+      u.activeTaskCount = countMap[u._id.toString()] || 0;
+    });
+  }
+
   res.status(200).json({
     success: true,
     count: users.length,

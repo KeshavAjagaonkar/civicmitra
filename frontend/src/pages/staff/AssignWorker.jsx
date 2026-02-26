@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
 import { useToast } from '@/components/ui/use-toast';
 import useApi from '@/hooks/useApi';
-import { Loader2, AlertTriangle, User, ArrowLeft } from 'lucide-react';
+import { Loader2, AlertTriangle, User, ArrowLeft, Briefcase } from 'lucide-react';
 
 const AssignWorker = () => {
   const { id: complaintId } = useParams();
@@ -100,20 +100,38 @@ const AssignWorker = () => {
 
           <div className="space-y-2">
             <label htmlFor="worker" className="font-medium">Available Workers</label>
+            <p className="text-xs text-gray-500">Active tasks shown so you can balance workload.</p>
             <Select onValueChange={setSelectedWorkerId} value={selectedWorkerId}>
               <SelectTrigger id="worker" className="glass-input">
                 <SelectValue placeholder="Select an available worker..." />
               </SelectTrigger>
               <SelectContent>
                 {workers.length > 0 ? (
-                  workers.map(worker => (
-                    <SelectItem key={worker._id} value={worker._id}>
-                      <div className="flex items-center gap-2">
-                        <User className="w-4 h-4 text-gray-500" />
-                        {worker.name}
-                      </div>
-                    </SelectItem>
-                  ))
+                  workers
+                    .slice()
+                    .sort((a, b) => (a.activeTaskCount || 0) - (b.activeTaskCount || 0))
+                    .map(worker => {
+                      const count = worker.activeTaskCount || 0;
+                      const loadColor = count === 0
+                        ? 'text-green-600'
+                        : count <= 3
+                        ? 'text-amber-600'
+                        : 'text-red-600';
+                      return (
+                        <SelectItem key={worker._id} value={worker._id}>
+                          <div className="flex items-center justify-between gap-4 w-full">
+                            <div className="flex items-center gap-2">
+                              <User className="w-4 h-4 text-gray-500" />
+                              <span>{worker.name}</span>
+                            </div>
+                            <div className={`flex items-center gap-1 text-xs font-medium ${loadColor}`}>
+                              <Briefcase className="w-3 h-3" />
+                              {count} active
+                            </div>
+                          </div>
+                        </SelectItem>
+                      );
+                    })
                 ) : (
                   <div className="p-4 text-center text-sm text-gray-500">No workers found in this department.</div>
                 )}
