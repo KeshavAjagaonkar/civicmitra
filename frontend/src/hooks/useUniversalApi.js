@@ -15,9 +15,7 @@ export const useUniversalFetch = (endpoint, method = 'GET', body = null) => {
       setLoading(true);
       setError(null);
 
-      console.log('Fetching data from:', endpoint);
       const response = await request(endpoint, method, body);
-      console.log('Response:', response);
 
       if (response?.success) {
         setData(response.data);
@@ -25,7 +23,6 @@ export const useUniversalFetch = (endpoint, method = 'GET', body = null) => {
         throw new Error(response?.message || 'Failed to fetch data');
       }
     } catch (err) {
-      console.error('Error fetching data:', err);
       setError(err.message || 'Failed to fetch data');
       setData(null);
     } finally {
@@ -54,12 +51,12 @@ export const useUsers = () => {
 // Hook for complaints (role-based)
 export const useComplaints = () => {
   const { user } = useAuth();
-  
+
   let endpoint = '/api/complaints/all';
   if (user?.role === 'citizen') {
     endpoint = '/api/complaints/my';
   }
-  
+
   return useUniversalFetch(endpoint);
 };
 
@@ -71,24 +68,24 @@ export const useDepartments = () => {
 // Hook for dashboard stats (role-aware)
 export const useStats = () => {
   const { user } = useAuth();
-  
+
   let endpoint = '/api/complaints/stats';
   if (user?.role === 'admin') {
     endpoint = '/api/admin/dashboard/stats';
   }
-  
+
   return useUniversalFetch(endpoint);
 };
 
 // Hook for recent complaints
 export const useRecentComplaints = () => {
   const { user } = useAuth();
-  
+
   let endpoint = '/api/complaints/recent';
   if (user?.role === 'admin') {
     endpoint = '/api/admin/dashboard/recent-complaints';
   }
-  
+
   return useUniversalFetch(endpoint);
 };
 

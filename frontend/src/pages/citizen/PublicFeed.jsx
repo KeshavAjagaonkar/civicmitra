@@ -27,7 +27,7 @@ const PublicFeed = () => {
   const [category, setCategory] = useState('All');
   const [status, setStatus] = useState('All');
   const [sort, setSort] = useState('-communityPriority.score');
-  
+
   const { request } = useApi();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -38,16 +38,16 @@ const PublicFeed = () => {
       let url = `/api/complaints/public?page=${page}&limit=10&sort=${sort}`;
       if (category !== 'All') url += `&category=${encodeURIComponent(category)}`;
       if (status !== 'All') url += `&status=${encodeURIComponent(status)}`;
-      
+
       const res = await request(url);
       if (res.success) {
         setComplaints(res.data);
         if (res.pagination) {
-            setTotalPages(res.pagination.pages || Math.ceil(res.pagination.total / 10)); 
+          setTotalPages(res.pagination.pages || Math.ceil(res.pagination.total / 10));
         }
       }
     } catch (error) {
-      console.error('Failed to fetch public complaints:', error);
+      // Silently handled — loading state will show
     } finally {
       setLoading(false);
     }
@@ -58,7 +58,7 @@ const PublicFeed = () => {
   }, [fetchComplaints]);
 
   const handleCardClick = (id) => {
-     navigate(user?.slug ? `/${user.slug}/complaints/${id}` : `/complaints/${id}`);
+    navigate(user?.slug ? `/${user.slug}/complaints/${id}` : `/complaints/${id}`);
   };
 
   return (
@@ -108,8 +108,8 @@ const PublicFeed = () => {
           </div>
         ) : (
           complaints.map(complaint => (
-            <Card 
-              key={complaint._id} 
+            <Card
+              key={complaint._id}
               className="cursor-pointer hover:shadow-md transition-shadow"
               onClick={() => handleCardClick(complaint._id)}
             >
@@ -118,7 +118,7 @@ const PublicFeed = () => {
                   <CardTitle className="text-lg text-blue-600 line-clamp-1">{complaint.title}</CardTitle>
                   <Badge variant={
                     complaint.status === 'Resolved' ? 'success' :
-                    complaint.status === 'In Progress' ? 'warning' : 'default'
+                      complaint.status === 'In Progress' ? 'warning' : 'default'
                   }>
                     {complaint.status}
                   </Badge>
@@ -142,10 +142,10 @@ const PublicFeed = () => {
                 <div className="text-xs text-gray-500">
                   <span className="font-medium">Priority Score:</span> {complaint.communityPriority?.score || 0}
                 </div>
-                <UpvoteButton 
-                  complaintId={complaint._id} 
-                  initialCount={complaint.upvotes?.count || 0} 
-                  initialHasUpvoted={complaint.hasUserSupported || false} 
+                <UpvoteButton
+                  complaintId={complaint._id}
+                  initialCount={complaint.upvotes?.count || 0}
+                  initialHasUpvoted={complaint.hasUserSupported || false}
                 />
               </CardFooter>
             </Card>
@@ -156,17 +156,17 @@ const PublicFeed = () => {
       {/* Pagination Controls */}
       {!loading && totalPages > 1 && (
         <div className="flex justify-center items-center gap-4 mt-8">
-          <Button 
-            variant="outline" 
-            disabled={page === 1} 
+          <Button
+            variant="outline"
+            disabled={page === 1}
             onClick={() => setPage(p => p - 1)}
           >
             Previous
           </Button>
           <span className="text-sm text-gray-600">Page {page} of {totalPages}</span>
-          <Button 
-            variant="outline" 
-            disabled={page === totalPages} 
+          <Button
+            variant="outline"
+            disabled={page === totalPages}
             onClick={() => setPage(p => p + 1)}
           >
             Next
