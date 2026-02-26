@@ -102,33 +102,16 @@ const getFallbackClassification = (category) => {
 };
 
 /**
- * Get department ID by category
+ * Get department ID by category — queries DB so admins control routing without code changes.
+ * Departments declare which categories they handle via the categories[] field.
+ * Falls back to null (unassigned) if no department claims the category.
  */
 exports.getDepartmentByCategory = async (category) => {
   try {
     const Department = require('../models/Department');
-
-    // Category to department name mapping (matches actual department names in DB)
-    const categoryToDepartment = {
-      'Roads': 'Road Maintenance',
-      'Water Supply': 'Water Supply',
-      'Sanitation': 'Sanitation',
-      'Electricity': 'Street Lighting',
-      'Public Health': 'Health & Hygiene',
-      'Street Lights': 'Street Lighting',
-      'Drainage': 'Water Supply',
-      'Garbage': 'Sanitation',
-      'Other': null
-    };
-
-    const departmentName = categoryToDepartment[category];
-    if (!departmentName) return null;
-
-    // Find department by name
-    const department = await Department.findOne({ name: departmentName });
+    const department = await Department.findOne({ categories: category }).select('_id');
     return department ? department._id : null;
   } catch (error) {
-
     return null;
   }
 };

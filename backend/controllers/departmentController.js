@@ -6,8 +6,8 @@ const ErrorResponse = require('../utils/errorResponse');
 // @route   POST /api/v1/departments
 // @access  Private/Admin
 exports.createDepartment = asyncHandler(async (req, res, next) => {
-    const { name, description, email, phone } = req.body;
-    const department = await Department.create({ name, description, email, phone });
+    const { name, description, categories } = req.body;
+    const department = await Department.create({ name, description, categories: categories || [] });
     res.status(201).json({ success: true, data: department });
 });
 
