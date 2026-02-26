@@ -39,6 +39,10 @@ const broadcastToSupporters = async (complaint, title, message) => {
   }
 };
 
+// Per-user filing rate limit: max 5 complaints per 24 hours.
+// Prevents spam/abuse and protects AI API quota.
+const DAILY_FILING_LIMIT = 5;
+
 // @desc    Create a new complaint
 // @route   POST /api/complaints
 // @access  Private (Citizen)
@@ -46,6 +50,19 @@ exports.createComplaint = asyncHandler(async (req, res, next) => {
   const { title, description, category, location, department: userDepartment, priority, lng, lat } = req.body;
   if (!title || !description || !location) {
     return next(new ErrorResponse('Title, description, and location are required', 400));
+  }
+
+  // Rate limit: count complaints filed by this user in the last 24 hours
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const recentCount = await Complaint.countDocuments({
+    citizenId: req.user.id,
+    createdAt: { $gte: since },
+  });
+  if (recentCount >= DAILY_FILING_LIMIT) {
+    return next(new ErrorResponse(
+      `You have reached the limit of ${DAILY_FILING_LIMIT} complaints per day. Please try again after 24 hours.`,
+      429
+    ));
   }
 
   const classification = await classifyComplaint(title, description, category);
