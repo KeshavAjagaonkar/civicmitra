@@ -8,7 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
-import { Upload, FileText, MapPin } from 'lucide-react';
+import { Upload, FileText } from 'lucide-react';
+import LocationPicker from '@/components/LocationPicker';
 import { useToast } from '@/components/ui/use-toast';
 import { useDropzone } from 'react-dropzone';
 import useApi from '@/hooks/useApi';
@@ -111,7 +112,7 @@ const FileComplaint = () => {
         return; // Stop the submission flow here
       }
     } catch (err) {
-      console.warn("Duplicate check failed, proceeding with submission", err);
+      // Duplicate check failed — proceed with submission anyway
       // If the duplicate check fails for some reason (e.g. Gemini quota), we still want them to be able to submit.
     }
     setIsCheckingDuplicates(false);
@@ -146,7 +147,7 @@ const FileComplaint = () => {
         navigate(complaintsPath);
       }
     } catch (err) {
-      console.error('Complaint submission error:', err);
+      // Submission error handled by toast below
       toast({
         title: 'Submission failed',
         description: err.message || 'An unexpected error occurred.',
@@ -165,7 +166,7 @@ const FileComplaint = () => {
           Help us improve your community by reporting issues that need attention.
         </p>
       </div>
-      
+
       <Card className="card-elevated">
         <CardHeader className="text-center md:text-left">
           <CardTitle className="text-xl md:text-2xl flex items-center justify-center md:justify-start gap-2">
@@ -181,11 +182,11 @@ const FileComplaint = () => {
             {/* Title */}
             <div className="form-group">
               <label htmlFor="title" className="form-label">Complaint Title *</label>
-              <Input 
-                id="title" 
-                placeholder="e.g., Pothole on Main Street causing vehicle damage" 
-                className="glass-input input-enhanced" 
-                {...register('title')} 
+              <Input
+                id="title"
+                placeholder="e.g., Pothole on Main Street causing vehicle damage"
+                className="glass-input input-enhanced"
+                {...register('title')}
               />
               <p className="form-helper">Provide a clear, specific title for your complaint</p>
               {errors.title && <p className="form-error">⚠️ {errors.title.message}</p>}
@@ -287,52 +288,28 @@ const FileComplaint = () => {
             {/* Description */}
             <div>
               <label htmlFor="description" className="block text-sm font-medium mb-2">Description</label>
-              <Textarea 
-                id="description" 
-                placeholder="Describe the issue in detail..." 
-                className="glass-input" 
+              <Textarea
+                id="description"
+                placeholder="Describe the issue in detail..."
+                className="glass-input"
                 rows={5}
-                {...register('description')} 
+                {...register('description')}
               />
               {errors.description && <p className="text-red-500 text-xs mt-1">{errors.description.message}</p>}
             </div>
 
-            {/* Location */}
-            <div>
-              <label htmlFor="location" className="block text-sm font-medium mb-2">Location</label>
-              <div className="flex gap-2">
-                <Input 
-                  id="location" 
-                  placeholder="e.g., Near City Hall" 
-                  className="glass-input flex-1" 
-                  {...register('location')} 
-                />
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  title="Use my current location"
-                  onClick={() => {
-                    if (navigator.geolocation) {
-                      toast({ title: 'Fetching location...', description: 'Please allow location access.' });
-                      navigator.geolocation.getCurrentPosition(
-                        (position) => {
-                          setValue('lng', position.coords.longitude);
-                          setValue('lat', position.coords.latitude);
-                          toast({ title: 'Location captured!', description: 'Coordinates successfully attached to your complaint.', variant: 'success' });
-                        },
-                        (error) => {
-                          toast({ title: 'Location failed', description: error.message, variant: 'destructive' });
-                        }
-                      );
-                    } else {
-                      toast({ title: 'Not supported', description: 'Geolocation is not supported by your browser.', variant: 'destructive' });
-                    }
-                  }}
-                >
-                  <MapPin className="w-5 h-5 text-blue-500" />
-                </Button>
-              </div>
-              {errors.location && <p className="text-red-500 text-xs mt-1">{errors.location.message}</p>}
+            {/* Location — Interactive Map */}
+            <div className="form-group">
+              <label className="form-label">Location *</label>
+              <LocationPicker
+                onLocationChange={({ address, lat, lng }) => {
+                  setValue('location', address, { shouldValidate: true });
+                  setValue('lat', lat);
+                  setValue('lng', lng);
+                }}
+              />
+              <input type="hidden" {...register('location')} />
+              {errors.location && <p className="form-error">⚠️ {errors.location.message}</p>}
             </div>
 
             {/* Attachments */}
@@ -362,16 +339,16 @@ const FileComplaint = () => {
               </div>
             </div>
 
-            <Button 
-              type="submit" 
-              className="w-full" 
+            <Button
+              type="submit"
+              className="w-full"
               variant="success"
               size="lg"
               disabled={isLoading || isCheckingDuplicates}
             >
               {isCheckingDuplicates ? 'Checking for similar issues...' : isLoading ? 'Submitting...' : 'Submit Complaint'}
             </Button>
-            
+
             <div className="text-center text-sm text-gray-500 dark:text-gray-400">
               🔒 Your complaint will be reviewed and assigned to the appropriate department
             </div>
@@ -407,8 +384,8 @@ const FileComplaint = () => {
                   <span>📍 {typeof match.complaint.location === 'object' ? match.complaint.location.address : match.complaint.location}</span>
                   <span>👍 {match.complaint.upvotes?.count || 0} supporters</span>
                 </div>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="w-full border-orange-200 hover:bg-orange-100 hover:text-orange-700"
                   onClick={() => {
                     setIsDuplicateModalOpen(false);
@@ -422,14 +399,14 @@ const FileComplaint = () => {
           </div>
 
           <DialogFooter className="mt-6 flex flex-col sm:flex-row gap-3 sm:justify-between">
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               onClick={() => setIsDuplicateModalOpen(false)}
             >
               Cancel
             </Button>
-            <Button 
-              variant="default" 
+            <Button
+              variant="default"
               onClick={() => {
                 setIsDuplicateModalOpen(false);
                 finalSubmit(pendingFormData);
