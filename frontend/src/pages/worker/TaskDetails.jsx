@@ -69,7 +69,7 @@ const TaskDetails = () => {
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
-  
+
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleString('en-US', {
@@ -113,8 +113,8 @@ const TaskDetails = () => {
   // 3. Connect the update form to the backend API
   const handleAddUpdate = async () => {
     if (!newUpdate.trim()) {
-       toast({ title: "Update notes cannot be empty.", variant: "destructive" });
-       return;
+      toast({ title: "Update notes cannot be empty.", variant: "destructive" });
+      return;
     }
     try {
       const formData = new FormData();
@@ -206,7 +206,7 @@ const TaskDetails = () => {
               <CardHeader><CardTitle>Field Assignment Details</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <div><h4 className="font-medium">Issue Description</h4><p className="text-gray-600 dark:text-gray-400">{complaint.description}</p></div>
-                <div><h4 className="font-medium flex items-center gap-2"><MapPin className="w-4 h-4" />Field Location</h4><p className="text-gray-600 dark:text-gray-400">{complaint.location}</p></div>
+                <div><h4 className="font-medium flex items-center gap-2"><MapPin className="w-4 h-4" />Field Location</h4><p className="text-gray-600 dark:text-gray-400">{typeof complaint.location === 'object' ? complaint.location.address : complaint.location}</p></div>
                 <div className="grid md:grid-cols-2 gap-4">
                   <div><h4 className="font-medium">Category</h4><p>{complaint.category}</p></div>
                   <div><h4 className="font-medium">Department</h4><p>{complaint.department?.name || 'N/A'}</p></div>

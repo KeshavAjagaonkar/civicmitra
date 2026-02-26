@@ -108,19 +108,19 @@ const ComplaintDetails = () => {
         notes: `Status changed to ${value}`
       });
       if (result.success) {
-    setCurrentStatus(value);
+        setCurrentStatus(value);
         setComplaint(prev => ({ ...prev, status: value }));
-        toast({ 
-          title: 'Status updated', 
+        toast({
+          title: 'Status updated',
           description: 'Complaint status has been updated successfully.',
           variant: 'success'
         });
       }
     } catch (err) {
-      toast({ 
-        title: 'Failed to update status', 
-        description: err.message, 
-        variant: 'destructive' 
+      toast({
+        title: 'Failed to update status',
+        description: err.message,
+        variant: 'destructive'
       });
     }
   };
@@ -324,13 +324,13 @@ const ComplaintDetails = () => {
               </div>
               <div>
                 <strong>Location:</strong>
-                <p className="text-gray-600 mt-1">{complaint.location}</p>
+                <p className="text-gray-600 mt-1">{typeof complaint.location === 'object' ? complaint.location.address : complaint.location}</p>
               </div>
               {complaint.attachments && complaint.attachments.length > 0 && (
                 <div>
                   <strong>Attachments:</strong>
                   <div className="mt-2 space-y-2">
-                    {complaint.attachments.map((attachment, index) => (                      <div key={index} className="flex items-center gap-2">                        <img                          src={attachment.url}                          alt={`Attachment ${index + 1}`}                          className="w-20 h-20 object-cover rounded-xl border-2 border-gray-200 cursor-pointer hover:scale-105 transition-transform hover:shadow-lg"                          onClick={() => setSelectedImage(attachment.url)}                        />                      </div>                    ))}
+                    {complaint.attachments.map((attachment, index) => (<div key={index} className="flex items-center gap-2">                        <img src={attachment.url} alt={`Attachment ${index + 1}`} className="w-20 h-20 object-cover rounded-xl border-2 border-gray-200 cursor-pointer hover:scale-105 transition-transform hover:shadow-lg" onClick={() => setSelectedImage(attachment.url)} />                      </div>))}
                   </div>
                 </div>
               )}
@@ -344,11 +344,10 @@ const ComplaintDetails = () => {
                         {[...Array(5)].map((_, index) => (
                           <Star
                             key={index}
-                            className={`w-4 h-4 ${
-                              index < feedback.rating
+                            className={`w-4 h-4 ${index < feedback.rating
                                 ? 'text-yellow-400 fill-yellow-400'
                                 : 'text-gray-300 dark:text-gray-600'
-                            }`}
+                              }`}
                           />
                         ))}
                       </div>
@@ -368,8 +367,8 @@ const ComplaintDetails = () => {
             </CardContent>
           </Card>
 
-          <ComplaintTimeline 
-            isEditable={userRole === 'worker'} 
+          <ComplaintTimeline
+            isEditable={userRole === 'worker'}
             complaintId={complaint._id}
             timeline={complaint.timeline}
           />

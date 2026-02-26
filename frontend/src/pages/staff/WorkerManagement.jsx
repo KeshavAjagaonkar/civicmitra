@@ -379,7 +379,7 @@ const WorkerManagement = () => {
                         <div className="flex flex-col">
                           <span className="font-medium">{complaint.title}</span>
                           <span className="text-xs text-gray-500">
-                            {complaint.location} • {complaint.priority} Priority • {complaint.status}
+                            {typeof complaint.location === 'object' ? complaint.location.address : complaint.location} • {complaint.priority} Priority • {complaint.status}
                           </span>
                         </div>
                       </SelectItem>

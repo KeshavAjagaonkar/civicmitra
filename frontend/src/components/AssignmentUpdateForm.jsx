@@ -105,7 +105,7 @@ const AssignmentUpdateForm = ({ complaint, onUpdateSuccess, onCancel }) => {
       <CardContent className="space-y-4">
         <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border">
           <h4 className="font-semibold">{complaint.title}</h4>
-          <p className="text-sm text-gray-500">{complaint.location}</p>
+          <p className="text-sm text-gray-500">{typeof complaint.location === 'object' ? complaint.location.address : complaint.location}</p>
           <p className="text-sm text-gray-500">Department: {complaint.department?.name}</p>
         </div>
 

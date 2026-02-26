@@ -87,7 +87,7 @@ const ProgressUpdateForm = ({ complaint, onUpdateSuccess }) => {
                   rows={3}
                 />
               </div>
-              <Button 
+              <Button
                 onClick={handleAddUpdate}
                 loading={isLoading}
                 disabled={!notes.trim()}
@@ -168,7 +168,7 @@ const WorkerDashboard = () => {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2 lg:gap-8">
-      {/* Field Assignments */}
+        {/* Field Assignments */}
         <div className="space-y-6">
           <Card className="glass-card">
             <CardHeader>
@@ -196,7 +196,7 @@ const WorkerDashboard = () => {
                       <div className="flex justify-between items-start mb-2">
                         <div>
                           <h4 className="font-medium">{complaint.title}</h4>
-                          <p className="text-xs text-gray-500 mt-1">Location: {complaint.location}</p>
+                          <p className="text-xs text-gray-500 mt-1">Location: {typeof complaint.location === 'object' ? complaint.location.address : complaint.location}</p>
                         </div>
                         <div className="flex gap-2">
                           <Badge variant={getStatusVariant(complaint.status)}>
@@ -252,13 +252,13 @@ const WorkerDashboard = () => {
         {/* Progress Update Panel */}
         <div>
           {selectedComplaint ? (
-             <ProgressUpdateForm
-                complaint={selectedComplaint}
-                onUpdateSuccess={() => {
-                  refetch(); // Refetch the list of complaints
-                  setSelectedComplaint(null); // Close the form
-                }}
-              />
+            <ProgressUpdateForm
+              complaint={selectedComplaint}
+              onUpdateSuccess={() => {
+                refetch(); // Refetch the list of complaints
+                setSelectedComplaint(null); // Close the form
+              }}
+            />
           ) : (
             <Card className="glass-card sticky top-24">
               <CardContent className="flex flex-col items-center justify-center py-12">

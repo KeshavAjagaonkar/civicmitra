@@ -27,7 +27,7 @@ const AssignWorker = () => {
         const complaintRes = await request(`/api/complaints/${complaintId}`);
         if (complaintRes.success) {
           setComplaint(complaintRes.data);
-          
+
           // 2. Once we have the complaint, fetch workers from that department
           if (complaintRes.data.department) {
             const departmentId = complaintRes.data.department._id;
@@ -82,10 +82,10 @@ const AssignWorker = () => {
 
   return (
     <div className="space-y-8">
-       <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back
-        </Button>
+      <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
+        <ArrowLeft className="w-4 h-4 mr-2" />
+        Back
+      </Button>
       <Card className="form-container-card max-w-lg mx-auto">
         <CardHeader>
           <CardTitle>Assign Worker</CardTitle>
@@ -94,7 +94,7 @@ const AssignWorker = () => {
         <CardContent className="space-y-6">
           <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border">
             <h4 className="font-semibold">{complaint.title}</h4>
-            <p className="text-sm text-gray-500">{complaint.location}</p>
+            <p className="text-sm text-gray-500">{typeof complaint.location === 'object' ? complaint.location.address : complaint.location}</p>
             <p className="text-sm text-gray-500">Department: {complaint.department?.name}</p>
           </div>
 

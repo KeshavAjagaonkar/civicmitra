@@ -60,7 +60,7 @@ const ComplaintManagement = () => {
       filtered = filtered.filter(complaint =>
         complaint.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         complaint.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        complaint.location?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (typeof complaint.location === 'object' ? complaint.location.address : complaint.location || '')?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         complaint.citizenId?.name?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
@@ -263,7 +263,7 @@ const ComplaintManagement = () => {
                       <h5 className="font-medium mb-2">Complaint Details</h5>
                       <div className="space-y-1 text-sm">
                         <p><strong>Category:</strong> {complaint.category}</p>
-                        <p><strong>Location:</strong> {complaint.location}</p>
+                        <p><strong>Location:</strong> {typeof complaint.location === 'object' ? complaint.location.address : complaint.location}</p>
                         <p><strong>Citizen:</strong> {complaint.citizenId?.name} ({complaint.citizenId?.email})</p>
                         {complaint.workerId ? (
                           <p><strong>Assigned Worker:</strong> {complaint.workerId?.name || 'Unknown'}</p>

@@ -93,7 +93,7 @@ const AssignedTasks = () => {
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays;
   };
-  
+
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center">
@@ -135,7 +135,7 @@ const AssignedTasks = () => {
             <div className="text-3xl font-bold">{stats.completed}</div>
           </CardContent>
         </Card>
-         <Card className="kpi-card-solid">
+        <Card className="kpi-card-solid">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-gray-500">Resolved Today</CardTitle>
             <CheckCircle className="h-5 w-5 text-green-600" />
@@ -201,59 +201,59 @@ const AssignedTasks = () => {
           <Button onClick={refetch} variant="destructive" className="mt-4">Try Again</Button>
         </div>
       ) : (
-      
-      /* 4. Map over filtered LIVE data */
-      <div className="grid gap-6">
-        {filteredComplaints.length === 0 ? (
-          <Card className="glass-card">
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <div className="text-center">
-                <h3 className="text-lg font-semibold mb-2">No assignments found</h3>
-                <p className="text-gray-600">No assignments match your current filters.</p>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          filteredComplaints.map((complaint) => (
-            <Card key={complaint._id} className="glass-card hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="text-xl">{complaint.title}</CardTitle>
-                    <p className="text-sm text-gray-500 mt-1">Field Location: {complaint.location}</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Badge variant={getStatusVariant(complaint.status)}>{complaint.status}</Badge>
-                    <Badge variant="outline" className={getPriorityColor(complaint.priority)}>{complaint.priority}</Badge>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <p className="text-gray-600 dark:text-gray-400">{complaint.description}</p>
-                  <div className="grid md:grid-cols-2 gap-4 text-sm bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
-                    <p><strong>Category:</strong> {complaint.category}</p>
-                    <p><strong>Department:</strong> {complaint.department?.name || 'N/A'}</p>
-                    <p><strong>Citizen Contact:</strong> {complaint.citizenId?.name || 'N/A'}</p>
-                    <p><strong>Date Assigned:</strong> {formatDate(complaint.createdAt)}</p>
-                  </div>
-                  <div className="flex gap-2 pt-4 border-t">
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={() => navigate(`/worker/tasks/${complaint._id}`)}
-                      className="flex-1"
-                    >
-                      <Eye className="w-4 h-4 mr-2" />
-                      View Details & Update
-                    </Button>
-                  </div>
+
+        /* 4. Map over filtered LIVE data */
+        <div className="grid gap-6">
+          {filteredComplaints.length === 0 ? (
+            <Card className="glass-card">
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <div className="text-center">
+                  <h3 className="text-lg font-semibold mb-2">No assignments found</h3>
+                  <p className="text-gray-600">No assignments match your current filters.</p>
                 </div>
               </CardContent>
             </Card>
-          ))
-        )}
-      </div>
+          ) : (
+            filteredComplaints.map((complaint) => (
+              <Card key={complaint._id} className="glass-card hover:shadow-lg transition-shadow">
+                <CardHeader>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle className="text-xl">{complaint.title}</CardTitle>
+                      <p className="text-sm text-gray-500 mt-1">Field Location: {typeof complaint.location === 'object' ? complaint.location.address : complaint.location}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Badge variant={getStatusVariant(complaint.status)}>{complaint.status}</Badge>
+                      <Badge variant="outline" className={getPriorityColor(complaint.priority)}>{complaint.priority}</Badge>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <p className="text-gray-600 dark:text-gray-400">{complaint.description}</p>
+                    <div className="grid md:grid-cols-2 gap-4 text-sm bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+                      <p><strong>Category:</strong> {complaint.category}</p>
+                      <p><strong>Department:</strong> {complaint.department?.name || 'N/A'}</p>
+                      <p><strong>Citizen Contact:</strong> {complaint.citizenId?.name || 'N/A'}</p>
+                      <p><strong>Date Assigned:</strong> {formatDate(complaint.createdAt)}</p>
+                    </div>
+                    <div className="flex gap-2 pt-4 border-t">
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => navigate(`/worker/tasks/${complaint._id}`)}
+                        className="flex-1"
+                      >
+                        <Eye className="w-4 h-4 mr-2" />
+                        View Details & Update
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
       )}
     </div>
   );

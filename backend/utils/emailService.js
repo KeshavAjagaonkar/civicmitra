@@ -139,7 +139,7 @@ exports.sendComplaintUpdateEmail = async (user, complaint, message) => {
           <p><strong>Title:</strong> ${complaint.title}</p>
           <p><strong>Status:</strong> <span class="status-badge status-${complaint.status.toLowerCase().replace(' ', '-')}">${complaint.status}</span></p>
           <p><strong>Category:</strong> ${complaint.category}</p>
-          <p><strong>Location:</strong> ${complaint.location}</p>
+          <p><strong>Location:</strong> ${typeof complaint.location === 'object' ? complaint.location.address : complaint.location}</p>
 
           <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/${user.slug || ''}/complaints/${complaint._id}" class="button">View Complaint Details</a>
 

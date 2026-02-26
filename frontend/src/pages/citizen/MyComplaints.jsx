@@ -70,7 +70,7 @@ const MyComplaints = () => {
       default: return 'priority-medium';
     }
   };
-  
+
   const getStatusIcon = (status) => {
     switch (status) {
       case 'Submitted': return '📝';
@@ -80,7 +80,7 @@ const MyComplaints = () => {
       default: return '📝';
     }
   };
-  
+
   const getPriorityIcon = (priority) => {
     switch (priority) {
       case 'High': return '🔴';
@@ -164,15 +164,15 @@ const MyComplaints = () => {
                   <div className="text-sm">
                     <span className="font-medium text-gray-900 dark:text-gray-100">Description: </span>
                     <span className="text-gray-600 dark:text-gray-400">
-                      {complaint.description.length > 120 
-                        ? `${complaint.description.substring(0, 120)}...` 
+                      {complaint.description.length > 120
+                        ? `${complaint.description.substring(0, 120)}...`
                         : complaint.description
                       }
                     </span>
                   </div>
                   <div className="text-sm">
                     <span className="font-medium text-gray-900 dark:text-gray-100">Location: </span>
-                    <span className="text-gray-600 dark:text-gray-400">{complaint.location}</span>
+                    <span className="text-gray-600 dark:text-gray-400">{typeof complaint.location === 'object' ? complaint.location.address : complaint.location}</span>
                   </div>
                   <div className="text-sm">
                     <span className="font-medium text-gray-900 dark:text-gray-100">Department: </span>
