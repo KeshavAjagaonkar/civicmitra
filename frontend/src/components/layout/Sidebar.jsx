@@ -71,9 +71,9 @@ const Sidebar = ({ isOpen, onClose }) => {
         <Link
           to={
             location.pathname.startsWith('/admin') ? '/admin'
-            : location.pathname.startsWith('/staff') ? '/staff'
-            : location.pathname.startsWith('/worker') ? '/worker'
-            : (user?.slug ? `/${user.slug}/dashboard` : '/dashboard')
+              : location.pathname.startsWith('/staff') ? '/staff'
+                : location.pathname.startsWith('/worker') ? '/worker'
+                  : (user?.slug ? `/${user.slug}/dashboard` : '/dashboard')
           }
           className="text-2xl font-bold text-blue-600"
         >
@@ -89,6 +89,7 @@ const Sidebar = ({ isOpen, onClose }) => {
           <NavLink
             key={item.name}
             to={item.path}
+            end
             onClick={onClose} // Close sidebar on navigation for mobile
             className={({ isActive }) =>
               cn(

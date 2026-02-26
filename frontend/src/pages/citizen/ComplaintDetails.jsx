@@ -41,12 +41,7 @@ const ComplaintDetails = () => {
   const [feedback, setFeedback] = useState(null);
 
   const [selectedImage, setSelectedImage] = useState(null);
-  const [userRole, setUserRole] = useState(() => {
-    if (location.pathname.startsWith('/admin')) return 'admin';
-    if (location.pathname.startsWith('/staff')) return 'staff';
-    if (location.pathname.startsWith('/worker')) return 'worker';
-    return 'citizen';
-  });
+  const userRole = user?.role || 'citizen';
 
   useEffect(() => {
     const fetchComplaint = async () => {
@@ -93,7 +88,7 @@ const ComplaintDetails = () => {
             setWorkers(result.data);
           }
         } catch (err) {
-          console.error('Failed to fetch workers:', err);
+          // Silently handled — non-critical
         }
       };
       fetchWorkers();
@@ -210,7 +205,12 @@ const ComplaintDetails = () => {
         )}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3 lg:gap-8">
+      <div className={`grid gap-6 lg:gap-8 ${(() => {
+        const currentUserId = (user?._id || user?.id || '').toString();
+        const isOwner = complaint.citizenId && (complaint.citizenId._id || complaint.citizenId).toString() === currentUserId;
+        const canChat = isOwner || userRole === 'staff' || userRole === 'admin' || (userRole === 'worker' && complaint.workerId && (complaint.workerId._id || complaint.workerId).toString() === currentUserId);
+        return canChat ? 'lg:grid-cols-3' : 'lg:grid-cols-1 max-w-4xl';
+      })()}`}>
         {/* Left Column: Details & Timeline */}
         <div className="lg:col-span-2 space-y-6 lg:space-y-8">
           <Card className="glass-card">
@@ -345,8 +345,8 @@ const ComplaintDetails = () => {
                           <Star
                             key={index}
                             className={`w-4 h-4 ${index < feedback.rating
-                                ? 'text-yellow-400 fill-yellow-400'
-                                : 'text-gray-300 dark:text-gray-600'
+                              ? 'text-yellow-400 fill-yellow-400'
+                              : 'text-gray-300 dark:text-gray-600'
                               }`}
                           />
                         ))}
@@ -374,10 +374,21 @@ const ComplaintDetails = () => {
           />
         </div>
 
-        {/* Right Column: Chat */}
-        <div className="lg:col-span-1">
-          <Chat complaintId={complaint._id} />
-        </div>
+        {/* Right Column: Chat — only for authorized participants */}
+        {(() => {
+          const currentUserId = (user?._id || user?.id || '').toString();
+          const isOwner = complaint.citizenId && (complaint.citizenId._id || complaint.citizenId).toString() === currentUserId;
+          const isAssignedStaff = userRole === 'staff';
+          const isAssignedWorker = userRole === 'worker' && complaint.workerId && (complaint.workerId._id || complaint.workerId).toString() === currentUserId;
+          const isAdmin = userRole === 'admin';
+          const canChat = isOwner || isAssignedStaff || isAssignedWorker || isAdmin;
+
+          return canChat ? (
+            <div className="lg:col-span-1">
+              <Chat complaintId={complaint._id} />
+            </div>
+          ) : null;
+        })()}
       </div>
 
       {/* Image Preview Modal */}
