@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 // Note: 'adminLogin' is no longer imported because it has been removed.
-const { register, login, getMe, updateProfile, changePassword } = require('../controllers/authController');
+const { register, login, getMe, updateProfile, changePassword, forgotPassword, resetPassword } = require('../controllers/authController');
 const { protect } = require('../middleware/authMiddleware');
 const { validate, registerSchema, loginSchema, updateProfileSchema, changePasswordSchema } = require('../middleware/validationMiddleware');
 
@@ -11,8 +11,9 @@ router.post('/register', validate(registerSchema), register);
 // Unified login route for ALL roles (citizen, staff, worker, admin)
 router.post('/login', validate(loginSchema), login);
 
-// This is the route that was causing the crash and has been removed:
-// router.post('/admin-login', validate(loginSchema), adminLogin);
+// Forgot/Reset Password (public — no auth needed)
+router.post('/forgot-password', forgotPassword);
+router.put('/reset-password/:token', resetPassword);
 
 // Route to get the currently logged-in user's data
 router.get('/me', protect, getMe);

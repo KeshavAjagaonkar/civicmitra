@@ -216,4 +216,29 @@ exports.sendWorkerAssignmentEmail = async (user, complaint, worker) => {
   return await exports.sendEmail(user.email, subject, html);
 };
 
+/**
+ * Send password reset email
+ */
+exports.sendResetPasswordEmail = async (user, resetUrl) => {
+  const subject = 'CivicMitra — Password Reset Request';
+  const html = `
+    <html>
+    <body style="font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px;">
+      <div style="max-width: 500px; margin: 0 auto; background: #fff; border-radius: 12px; padding: 32px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        <h2 style="color: #1a1a1a; margin-bottom: 16px;">Reset Your Password</h2>
+        <p style="color: #555;">Hi <strong>${user.name}</strong>,</p>
+        <p style="color: #555;">You requested a password reset. Click the button below to set a new password. This link expires in <strong>15 minutes</strong>.</p>
+        <div style="text-align: center; margin: 24px 0;">
+          <a href="${resetUrl}" style="display: inline-block; padding: 12px 32px; background: #2563eb; color: #fff; border-radius: 8px; text-decoration: none; font-weight: 600;">Reset Password</a>
+        </div>
+        <p style="color: #888; font-size: 13px;">If you didn't request this, ignore this email — your password won't change.</p>
+        <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
+        <p style="color: #aaa; font-size: 12px; text-align: center;">CivicMitra — Municipal Complaint Management</p>
+      </div>
+    </body>
+    </html>
+  `;
+  return await exports.sendEmail(user.email, subject, html);
+};
+
 module.exports = exports;

@@ -59,8 +59,12 @@ exports.register = asyncHandler(async (req, res, next) => {
 
   const user = await User.create(userData);
 
-  // Send welcome email for citizens
-  await sendWelcomeEmail(user);
+  // Send welcome email for citizens (non-blocking)
+  try {
+    await sendWelcomeEmail(user);
+  } catch (emailError) {
+    // Email failed — registration still succeeds
+  }
 
   sendTokenResponse(user, 201, res);
 });
@@ -133,6 +137,64 @@ exports.changePassword = asyncHandler(async (req, res, next) => {
   res.status(200).json({ success: true, message: 'Password updated successfully' });
 });
 
-// Note: adminLogin is removed as the primary login now handles all roles.
-// You can keep a separate adminLogin route if you have specific logic,
-// but the unified login controller makes it redundant.
+// @desc    Forgot password — send reset email
+// @route   POST /api/auth/forgot-password
+// @access  Public
+exports.forgotPassword = asyncHandler(async (req, res, next) => {
+  const { email } = req.body;
+  if (!email) {
+    return next(new ErrorResponse('Please provide an email', 400));
+  }
+
+  const user = await User.findOne({ email });
+  if (!user) {
+    // Don't reveal whether email exists — always return success
+    return res.status(200).json({ success: true, message: 'If an account with that email exists, a reset link has been sent.' });
+  }
+
+  // Generate reset token
+  const resetToken = user.getResetPasswordToken();
+  await user.save({ validateBeforeSave: false });
+
+  // Build reset URL
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const resetUrl = `${frontendUrl}/reset-password/${resetToken}`;
+
+  try {
+    const { sendResetPasswordEmail } = require('../utils/emailService');
+    await sendResetPasswordEmail(user, resetUrl);
+  } catch (err) {
+    // If email fails, clear the token so they can try again
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+    await user.save({ validateBeforeSave: false });
+    return next(new ErrorResponse('Email could not be sent. Please try again later.', 500));
+  }
+
+  res.status(200).json({ success: true, message: 'If an account with that email exists, a reset link has been sent.' });
+});
+
+// @desc    Reset password using token
+// @route   PUT /api/auth/reset-password/:token
+// @access  Public
+exports.resetPassword = asyncHandler(async (req, res, next) => {
+  const crypto = require('crypto');
+  const resetPasswordToken = crypto.createHash('sha256').update(req.params.token).digest('hex');
+
+  const user = await User.findOne({
+    resetPasswordToken,
+    resetPasswordExpire: { $gt: Date.now() },
+  });
+
+  if (!user) {
+    return next(new ErrorResponse('Invalid or expired reset token', 400));
+  }
+
+  // Set new password
+  user.password = req.body.password;
+  user.resetPasswordToken = undefined;
+  user.resetPasswordExpire = undefined;
+  await user.save();
+
+  res.status(200).json({ success: true, message: 'Password has been reset successfully. You can now log in.' });
+});

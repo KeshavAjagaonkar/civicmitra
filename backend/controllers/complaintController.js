@@ -105,7 +105,6 @@ exports.createComplaint = asyncHandler(async (req, res, next) => {
   // Auto-assign to department staff
   if (complaint.department) {
     try {
-      const User = require('../models/User');
       const departmentStaff = await User.findOne({
         role: 'staff',
         department: complaint.department
@@ -186,7 +185,19 @@ exports.getComplaintById = asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse(`Complaint not found with id of ${req.params.id}`, 404));
   }
 
-  // Authorization check could be added here if needed
+  // Authorization: citizen can only see their own complaints, staff sees department, worker sees assigned, admin sees all
+  const isOwner = complaint.citizenId._id.toString() === req.user.id;
+  const isStaff = req.user.role === 'staff' && complaint.department && req.user.department &&
+    complaint.department._id.toString() === (req.user.department._id || req.user.department).toString();
+  const isWorker = req.user.role === 'worker' && complaint.workerId && complaint.workerId._id.toString() === req.user.id;
+  const isAdmin = req.user.role === 'admin';
+  // Also allow if the complaint is public (for community feed)
+  const isPublic = complaint.isPublic;
+
+  if (!isOwner && !isStaff && !isWorker && !isAdmin && !isPublic) {
+    return next(new ErrorResponse('Not authorized to view this complaint', 403));
+  }
+
   res.status(200).json({ success: true, data: complaint });
 });
 
@@ -407,9 +418,34 @@ exports.getUserStats = asyncHandler(async (req, res, next) => {
 });
 
 exports.assignComplaint = asyncHandler(async (req, res, next) => {
-  // This is likely an admin function to assign a complaint to a department.
-  // Placeholder logic:
-  res.status(200).json({ success: true, message: "assignComplaint not fully implemented yet." });
+  const { departmentId } = req.body;
+  if (!departmentId) {
+    return next(new ErrorResponse('departmentId is required', 400));
+  }
+
+  let complaint = await Complaint.findById(req.params.id);
+  if (!complaint) { return next(new ErrorResponse('Complaint not found', 404)); }
+
+  complaint.department = departmentId;
+  complaint.timeline.push({
+    action: 'Department Assigned',
+    status: complaint.status,
+    notes: `Complaint assigned to department by admin.`,
+    updatedBy: req.user.id,
+  });
+  await complaint.save();
+
+  // Auto-assign a staff member from the new department
+  const departmentStaff = await User.findOne({ role: 'staff', department: departmentId });
+  if (departmentStaff) {
+    complaint.departmentStaffId = departmentStaff._id;
+    await complaint.save();
+    await createAndEmitNotification(departmentStaff._id, 'New Complaint Assigned', `Complaint "${complaint.title}" has been assigned to your department.`, complaint._id);
+  }
+
+  await broadcastToSupporters(complaint, 'Department Assigned', `Your complaint "${complaint.title}" has been assigned to a department.`);
+
+  res.status(200).json({ success: true, data: complaint });
 });
 
 exports.updateComplaintTimeline = asyncHandler(async (req, res, next) => {
@@ -453,7 +489,6 @@ exports.getWorkerReports = asyncHandler(async (req, res, next) => {
       break;
     case 'lastMonth':
       startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const endDate = new Date(now.getFullYear(), now.getMonth(), 0);
       break;
     case 'thisYear':
       startDate = new Date(now.getFullYear(), 0, 1);

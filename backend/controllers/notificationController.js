@@ -30,7 +30,7 @@ exports.markNotificationAsRead = asyncHandler(async (req, res, next) => {
 
   notification.read = true;
 
-  notification = await Notification.findByIdAndUpdate(req.params.id, req.body, {
+  notification = await Notification.findByIdAndUpdate(req.params.id, { read: true }, {
     new: true,
     runValidators: true,
   });
