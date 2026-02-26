@@ -43,6 +43,7 @@ yarn-error.log*
 ####
 CREDENTIALS.md
 SYSTEM_ANALYSIS.md
+CODEBASE_ANALYSIS.md
 frontend/HOW_TO_VIEW_ALL_PAGES.md
 frontend/IMPLEMENTATION_STATUS.md
 frontend/README.md
