@@ -65,6 +65,14 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-const upload = multer({ storage: storage, fileFilter });
+// 5 MB per file. Prevents large uploads from draining Cloudinary quota
+// or crashing the server on local disk storage.
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+
+const upload = multer({
+  storage,
+  fileFilter,
+  limits: { fileSize: MAX_FILE_SIZE },
+});
 
 module.exports = upload;

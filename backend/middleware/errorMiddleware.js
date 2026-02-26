@@ -1,4 +1,3 @@
-
 const ErrorResponse = require('../utils/errorResponse');
 
 const notFound = (req, res, next) => {
@@ -8,8 +7,17 @@ const notFound = (req, res, next) => {
 
 const errorHandler = (err, req, res, next) => {
   let error = { ...err };
-
   error.message = err.message;
+
+  // Multer file size exceeded
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    error = new ErrorResponse('File too large. Maximum allowed size is 5 MB per file.', 400);
+  }
+
+  // Multer unexpected field or file count exceeded
+  if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+    error = new ErrorResponse('Too many files or unexpected file field.', 400);
+  }
 
   // Mongoose bad ObjectId
   if (err.name === 'CastError') {
