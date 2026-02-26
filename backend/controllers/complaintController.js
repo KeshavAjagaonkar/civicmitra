@@ -386,6 +386,23 @@ exports.updateComplaintByWorker = asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse('You are not authorized to update this complaint', 403));
   }
 
+  // State machine guard: workers can only interact with In Progress complaints.
+  // Resolved, Closed, Rejected are locked — the complaint is done from the worker's side.
+  if (complaint.status !== 'In Progress') {
+    return next(new ErrorResponse(
+      `Cannot add updates to a complaint in "${complaint.status}" status. Workers can only update In Progress complaints.`,
+      400
+    ));
+  }
+
+  // Workers can only change status to Resolved. Any other status change is staff/admin territory.
+  if (status && status !== 'Resolved') {
+    return next(new ErrorResponse(
+      `Workers can only change status to "Resolved". Other status changes must be made by staff.`,
+      400
+    ));
+  }
+
   if (status) complaint.status = status;
 
   // Handle uploaded attachments

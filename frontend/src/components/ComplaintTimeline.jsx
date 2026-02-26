@@ -8,7 +8,7 @@ import { useToast } from './ui/use-toast';
 import { ImagePlus, X } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from './ui/Dialog';
 
-const ComplaintTimeline = ({ isEditable, complaintId, timeline = [] }) => {
+const ComplaintTimeline = ({ isEditable, complaintId, timeline = [], complaintStatus }) => {
   const { request, isLoading } = useApi();
   const { toast } = useToast();
   const [timelineEvents, setTimelineEvents] = useState([]);
@@ -53,11 +53,11 @@ const ComplaintTimeline = ({ isEditable, complaintId, timeline = [] }) => {
     setPreviewImages(newPreviews);
   };
 
-  const handleAddUpdate = async () => {
+  const submitUpdate = async (markResolved = false) => {
     if (!newUpdate.trim()) {
       toast({
         title: 'Update required',
-        description: 'Please enter update details',
+        description: 'Please enter update details before submitting',
         variant: 'destructive'
       });
       return;
@@ -65,15 +65,15 @@ const ComplaintTimeline = ({ isEditable, complaintId, timeline = [] }) => {
 
     try {
       const formData = new FormData();
-      formData.append('status', 'In Progress');
+      // Only send status when explicitly marking as Resolved — never hardcode In Progress
+      if (markResolved) formData.append('status', 'Resolved');
       formData.append('notes', newUpdate.trim());
 
-      // Add selected files
       selectedFiles.forEach(file => {
         formData.append('attachments', file);
       });
 
-      const result = await request(`/api/complaints/${complaintId}/timeline`, 'PUT', formData, true);
+      const result = await request(`/api/complaints/${complaintId}/worker-update`, 'PUT', formData, true);
 
       if (result.success) {
         setTimelineEvents(result.data.timeline || timelineEvents);
@@ -82,15 +82,15 @@ const ComplaintTimeline = ({ isEditable, complaintId, timeline = [] }) => {
         setPreviewImages([]);
 
         toast({
-          title: 'Update added',
-          description: 'Timeline updated successfully',
+          title: markResolved ? 'Complaint marked as Resolved' : 'Update added',
+          description: markResolved
+            ? 'The complaint has been resolved. The citizen will be notified.'
+            : 'Progress update posted to the timeline.',
         });
-
-        // Timeline already updated from response above
       }
     } catch (err) {
       toast({
-        title: 'Failed to add update',
+        title: 'Failed to submit update',
         description: err.message,
         variant: 'destructive'
       });
@@ -156,60 +156,79 @@ const ComplaintTimeline = ({ isEditable, complaintId, timeline = [] }) => {
         )}
 
         {isEditable && (
-          <div className="mt-8 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <h3 className="font-semibold text-lg mb-2">Add New Update</h3>
-            <Textarea
-              placeholder="Enter update details (e.g., 'Work started on fixing the issue')"
-              value={newUpdate}
-              onChange={(e) => setNewUpdate(e.target.value)}
-              className="mb-2 glass-input"
-              rows={3}
-            />
+          complaintStatus === 'In Progress' ? (
+            <div className="mt-8 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <h3 className="font-semibold text-lg mb-2">Add Progress Update</h3>
+              <Textarea
+                placeholder="Describe the work done or progress made on this issue..."
+                value={newUpdate}
+                onChange={(e) => setNewUpdate(e.target.value)}
+                className="mb-2 glass-input"
+                rows={3}
+              />
 
-            {/* Photo Upload Section */}
-            <div className="mb-4">
-              <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-300 mb-2">
-                <ImagePlus className="w-5 h-5" />
-                <span>Attach Photos (Optional, max 5)</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleFileSelect}
-                  className="hidden"
-                />
-              </label>
+              {/* Photo Upload */}
+              <div className="mb-4">
+                <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-300 mb-2">
+                  <ImagePlus className="w-5 h-5" />
+                  <span>Attach Photos (Optional, max 5)</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                </label>
 
-              {/* Preview Selected Images */}
-              {previewImages.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {previewImages.map((preview, index) => (
-                    <div key={index} className="relative">
-                      <img
-                        src={preview}
-                        alt={`Preview ${index + 1}`}
-                        className="w-20 h-20 object-cover rounded-lg border-2 border-gray-300"
-                      />
-                      <button
-                        onClick={() => removeFile(index)}
-                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
+                {previewImages.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {previewImages.map((preview, index) => (
+                      <div key={index} className="relative">
+                        <img
+                          src={preview}
+                          alt={`Preview ${index + 1}`}
+                          className="w-20 h-20 object-cover rounded-lg border-2 border-gray-300"
+                        />
+                        <button
+                          onClick={() => removeFile(index)}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => submitUpdate(false)}
+                  disabled={isLoading || !newUpdate.trim()}
+                >
+                  Post Progress Update
+                </Button>
+                <Button
+                  variant="success"
+                  onClick={() => submitUpdate(true)}
+                  disabled={isLoading || !newUpdate.trim()}
+                >
+                  Mark as Resolved
+                </Button>
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                "Mark as Resolved" will close your work on this complaint and notify the citizen.
+              </p>
             </div>
-
-            <Button
-              onClick={handleAddUpdate}
-              loading={isLoading}
-              disabled={!newUpdate.trim()}
-            >
-              Add Update
-            </Button>
-          </div>
+          ) : (
+            <div className="mt-8 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-2">
+                This complaint is <span className="font-medium">{complaintStatus}</span> — no further worker updates needed.
+              </p>
+            </div>
+          )
         )}
       </CardContent>
 

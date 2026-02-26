@@ -336,19 +336,9 @@ const ComplaintDetails = () => {
                     </Select>
                   )
                 ) : userRole === 'worker' ? (
-                  // Worker can only move In Progress → Resolved; all other states are read-only for them
-                  complaint.status === 'In Progress' ? (
-                    <Select value={currentStatus} onValueChange={handleStatusChange}>
-                      <SelectTrigger className="w-[200px] glass-input">
-                        <SelectValue placeholder="Select status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Resolved">Mark as Resolved</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <Badge variant={STATUS_BADGE_VARIANT[complaint.status] || 'secondary'}>{complaint.status}</Badge>
-                  )
+                  // Workers mark as Resolved through the Timeline below (with notes + proof photos)
+                  // PATCH /status is staff/admin only — worker uses PUT /worker-update endpoint
+                  <Badge variant={STATUS_BADGE_VARIANT[complaint.status] || 'secondary'}>{complaint.status}</Badge>
                 ) : (
                   <Badge variant={STATUS_BADGE_VARIANT[complaint.status] || 'secondary'}>{complaint.status}</Badge>
                 )}
@@ -477,6 +467,7 @@ const ComplaintDetails = () => {
             isEditable={userRole === 'worker'}
             complaintId={complaint._id}
             timeline={complaint.timeline}
+            complaintStatus={complaint.status}
           />
         </div>
 
