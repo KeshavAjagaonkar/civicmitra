@@ -38,7 +38,6 @@ const ChatPage = () => {
           }
         }
       } catch (err) {
-        console.error('Failed to fetch complaints:', err);
         toast({
           title: 'Failed to load complaints',
           description: err.message,

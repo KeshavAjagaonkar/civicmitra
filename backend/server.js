@@ -48,15 +48,63 @@ const io = new Server(server, {
 
 setSocketIO(io);
 
-io.on('connection', (socket) => {
-  // Handle joining user-specific notification room
-  socket.on('join_notifications', (userId) => {
-    socket.join(userId.toString());
-  });
+// --- Socket.IO Authentication Middleware ---
+const jwt = require('jsonwebtoken');
+const User = require('./models/User');
+const Complaint = require('./models/Complaint');
 
-  // Handle joining complaint-specific rooms
-  socket.on('join_room', (roomId) => {
-    socket.join(roomId);
+io.use(async (socket, next) => {
+  try {
+    const token = socket.handshake.auth?.token;
+    if (!token) {
+      return next(new Error('Authentication required'));
+    }
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id).select('name role department');
+    if (!user) {
+      return next(new Error('User not found'));
+    }
+    // Attach user to socket for use in event handlers
+    socket.user = {
+      id: user._id.toString(),
+      name: user.name,
+      role: user.role,
+      department: user.department?.toString(),
+    };
+    next();
+  } catch (err) {
+    next(new Error('Invalid token'));
+  }
+});
+
+io.on('connection', (socket) => {
+  // Auto-join user's own notification room (verified from JWT — no client input)
+  socket.join(socket.user.id);
+
+  // Handle joining complaint-specific chat rooms (with authorization)
+  socket.on('join_room', async (roomId) => {
+    try {
+      const complaint = await Complaint.findById(roomId).select('citizenId department workerId');
+      if (!complaint) return;
+
+      const userId = socket.user.id;
+      const userRole = socket.user.role;
+      const userDept = socket.user.department;
+
+      const isOwner = complaint.citizenId.toString() === userId;
+      const isStaff = userRole === 'staff' && complaint.department && userDept &&
+        complaint.department.toString() === userDept;
+      const isWorker = userRole === 'worker' && complaint.workerId &&
+        complaint.workerId.toString() === userId;
+      const isAdmin = userRole === 'admin';
+
+      if (isOwner || isStaff || isWorker || isAdmin) {
+        socket.join(roomId);
+      }
+      // Silently reject unauthorized joins — no error emitted
+    } catch (err) {
+      // Invalid roomId format or DB error — silently ignore
+    }
   });
 
   // Handle leaving rooms

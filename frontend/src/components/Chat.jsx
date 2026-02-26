@@ -38,7 +38,6 @@ const Chat = ({ complaintId }) => {
           setMessages(result.data.messages || []);
         }
       } catch (err) {
-        console.error('Failed to fetch chat:', err);
         toast({
           title: 'Failed to load chat',
           description: err.message,
@@ -56,11 +55,9 @@ const Chat = ({ complaintId }) => {
 
     // Join the complaint-specific room
     socket.emit('join_room', complaintId);
-    console.log('Joined chat room:', complaintId);
 
     // Listen for incoming messages
     const handleReceiveMessage = (message) => {
-      console.log('Received message:', message);
       setMessages((prev) => [...prev, message]);
     };
 
@@ -93,7 +90,6 @@ const Chat = ({ complaintId }) => {
         setNewMessage('');
       }
     } catch (err) {
-      console.error('Failed to send message:', err);
       toast({
         title: 'Failed to send message',
         description: err.message,
@@ -112,20 +108,9 @@ const Chat = ({ complaintId }) => {
 
   const isMyMessage = (message) => {
     // Handle both populated and non-populated sender
-    const senderId = message.sender?._id || message.sender;
-    const currentUserId = user?._id || user?.id;
-    const isMine = senderId === currentUserId;
-
-    // Debug log
-    console.log('Message alignment check:', {
-      messageSenderId: senderId,
-      currentUserId: currentUserId,
-      userObject: user,
-      isMine,
-      senderName: message.sender?.name
-    });
-
-    return isMine;
+    const senderId = (message.sender?._id || message.sender || '').toString();
+    const currentUserId = (user?._id || user?.id || '').toString();
+    return senderId === currentUserId;
   };
 
   const getSenderName = (message) => {
@@ -183,13 +168,12 @@ const Chat = ({ complaintId }) => {
                     className={`flex ${isMine ? 'justify-end' : 'justify-start'} mb-3`}
                   >
                     <div
-                      className={`max-w-[75%] px-4 py-2 shadow-sm ${
-                        isMine
+                      className={`max-w-[75%] px-4 py-2 shadow-sm ${isMine
                           ? 'bg-blue-500 text-white rounded-2xl rounded-br-md'
                           : msg.sender
-                          ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-50 rounded-2xl rounded-bl-md'
-                          : 'bg-yellow-100 dark:bg-yellow-900/30 text-gray-900 dark:text-gray-50 border border-yellow-300 dark:border-yellow-700 rounded-2xl'
-                      }`}
+                            ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-50 rounded-2xl rounded-bl-md'
+                            : 'bg-yellow-100 dark:bg-yellow-900/30 text-gray-900 dark:text-gray-50 border border-yellow-300 dark:border-yellow-700 rounded-2xl'
+                        }`}
                     >
                       {!isMine && msg.sender && (
                         <p className="text-xs font-semibold mb-1 opacity-80">

@@ -19,7 +19,7 @@ exports.getChat = asyncHandler(async (req, res, next) => {
     // Ensure user is authorized to view this chat (citizen, assigned staff, worker, or admin)
     const isCitizen = req.user.id === complaint.citizenId.toString();
     const isStaff = req.user.role === 'staff' && complaint.department && req.user.department &&
-        complaint.department.toString() === req.user.department._id.toString();
+        complaint.department.toString() === (req.user.department._id || req.user.department).toString();
     const isWorker = req.user.id === complaint.workerId?.toString();
     const isAdmin = req.user.role === 'admin';
 
@@ -69,7 +69,7 @@ exports.sendMessage = asyncHandler(async (req, res, next) => {
     // Ensure user is authorized to send a message
     const isCitizen = req.user.id === complaint.citizenId.toString();
     const isStaff = req.user.role === 'staff' && complaint.department && req.user.department &&
-        complaint.department.toString() === req.user.department._id.toString();
+        complaint.department.toString() === (req.user.department._id || req.user.department).toString();
     const isWorker = req.user.id === complaint.workerId?.toString();
     const isAdmin = req.user.role === 'admin';
 

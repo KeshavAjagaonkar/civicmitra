@@ -21,36 +21,28 @@ export const SocketProvider = ({ children }) => {
 
   useEffect(() => {
     if (isAuthenticated && token && user) {
-      // Initialize socket connection only when fully authenticated
       const newSocket = io(import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000', {
-        transports: ['websocket', 'polling'], // Try websocket first
+        transports: ['websocket', 'polling'],
         withCredentials: true,
         timeout: 20000,
         forceNew: true,
         autoConnect: true,
-        reconnectionAttempts: 3, // Limit reconnection attempts
-        reconnectionDelay: 2000
+        reconnectionAttempts: 3,
+        reconnectionDelay: 2000,
+        auth: { token }, // Send JWT for server-side verification
       });
 
       newSocket.on('connect', () => {
-        console.log('Socket connected successfully:', newSocket.id);
         setIsConnected(true);
-
-        // Join user-specific room for notifications
-        if (user?.id) {
-          newSocket.emit('join_notifications', user.id);
-        }
+        // Notification room is auto-joined server-side from verified JWT — no emit needed
       });
 
-      newSocket.on('disconnect', (reason) => {
-        console.log('Socket disconnected:', reason);
+      newSocket.on('disconnect', () => {
         setIsConnected(false);
       });
 
-      newSocket.on('connect_error', (error) => {
-        console.error('Socket connection error:', error);
+      newSocket.on('connect_error', () => {
         setIsConnected(false);
-        // Don't show error toast - silently fail for better UX
       });
 
       // Listen for real-time notifications
@@ -69,8 +61,6 @@ export const SocketProvider = ({ children }) => {
         });
       });
 
-      // Listen for new messages in chat (removed toast - handled in Chat component)
-
       setSocket(newSocket);
 
       return () => {
@@ -79,7 +69,6 @@ export const SocketProvider = ({ children }) => {
         setIsConnected(false);
       };
     } else {
-      // Clean up socket if user is not authenticated
       if (socket) {
         socket.close();
         setSocket(null);
@@ -88,7 +77,6 @@ export const SocketProvider = ({ children }) => {
     }
   }, [isAuthenticated, token, user]);
 
-  // Socket methods for components to use
   const emitEvent = (event, data) => {
     if (socket && isConnected) {
       socket.emit(event, data);
@@ -107,17 +95,6 @@ export const SocketProvider = ({ children }) => {
     }
   };
 
-  const sendMessage = (roomId, message) => {
-    if (socket && isConnected) {
-      socket.emit('send_message', {
-        room: roomId,
-        message,
-        sender: user?.name || user?.email,
-        senderId: user?.id
-      });
-    }
-  };
-
   return (
     <SocketContext.Provider
       value={{
@@ -126,7 +103,6 @@ export const SocketProvider = ({ children }) => {
         emitEvent,
         joinRoom,
         leaveRoom,
-        sendMessage
       }}
     >
       {children}
