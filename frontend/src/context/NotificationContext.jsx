@@ -64,30 +64,18 @@ export const NotificationProvider = ({ children }) => {
   }, [token, isAuthenticated, user, authLoading]);
 
   // Listen for real-time notifications via Socket.IO
+  // Backend emits 'new_notification' with the full Mongoose document
   useEffect(() => {
     if (socket && isConnected) {
       const handleNotification = (notification) => {
-        const newNotification = {
-          id: notification.id || Date.now(),
-          message: notification.message,
-          read: false,
-          date: new Date(notification.createdAt || Date.now()),
-          type: notification.type || 'general'
-        };
-        setNotifications(prev => [newNotification, ...prev]);
+        // Prepend the full DB document so Navbar can access _id, title, complaintId
+        setNotifications(prev => [notification, ...prev]);
       };
 
-      socket.on('notification', handleNotification);
-      socket.on('complaint_updated', (data) => {
-        handleNotification({
-          message: `Your complaint #${data.complaintId} has been updated to '${data.status}'`,
-          type: 'complaint_update'
-        });
-      });
+      socket.on('new_notification', handleNotification);
 
       return () => {
-        socket.off('notification', handleNotification);
-        socket.off('complaint_updated');
+        socket.off('new_notification', handleNotification);
       };
     }
   }, [socket, isConnected]);
@@ -104,19 +92,22 @@ export const NotificationProvider = ({ children }) => {
   };
 
   const markAsRead = async (id) => {
+    if (!id) return;
     try {
-      // Update locally first
-      setNotifications(prev => 
-        Array.isArray(prev) ? prev.map((n) => (n.id === id ? { ...n, read: true } : n)) : []
+      // Compare against both _id (fetched) and id (Mongoose virtual) — both are strings in JSON
+      setNotifications(prev =>
+        Array.isArray(prev)
+          ? prev.map((n) => {
+              const nId = (n._id || n.id)?.toString();
+              return nId === id.toString() ? { ...n, read: true } : n;
+            })
+          : []
       );
 
-      // Update on server if token is available
       if (token) {
         await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/api/notifications/${id}/read`, {
           method: 'PATCH',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          headers: { 'Authorization': `Bearer ${token}` }
         });
       }
     } catch (error) {

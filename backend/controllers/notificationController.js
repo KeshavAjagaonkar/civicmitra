@@ -40,3 +40,11 @@ exports.markNotificationAsRead = asyncHandler(async (req, res, next) => {
     data: notification,
   });
 });
+
+// @desc    Mark all notifications as read for the logged-in user
+// @route   PATCH /api/notifications/read-all
+// @access  Private
+exports.markAllNotificationsAsRead = asyncHandler(async (req, res, next) => {
+  await Notification.updateMany({ userId: req.user.id, read: false }, { read: true });
+  res.status(200).json({ success: true });
+});

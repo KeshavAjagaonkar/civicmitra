@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
+import { Badge } from '@/components/ui/Badge';
 import { Upload, FileText, ThumbsUp, AlertTriangle, MapPin } from 'lucide-react';
 import LocationPicker from '@/components/LocationPicker';
 import { useToast } from '@/components/ui/use-toast';

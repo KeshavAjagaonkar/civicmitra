@@ -316,34 +316,68 @@ const ComplaintDetails = () => {
               <div className="flex justify-between items-center">
                 <strong>Status:</strong>
                 {(userRole === 'staff' || userRole === 'admin') ? (
-                  <Select value={currentStatus} onValueChange={handleStatusChange}>
-                    <SelectTrigger className="w-[200px] glass-input">
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Under Review">Under Review</SelectItem>
-                      <SelectItem value="Needs Info">Needs Info</SelectItem>
-                      <SelectItem value="In Progress">In Progress</SelectItem>
-                      <SelectItem value="Transferred">Transferred</SelectItem>
-                      <SelectItem value="Resolved">Resolved</SelectItem>
-                      <SelectItem value="Rejected">Rejected</SelectItem>
-                      <SelectItem value="Closed">Closed</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  // Terminal states have no valid transitions — show badge only
+                  ['Rejected', 'Closed', 'Transferred'].includes(complaint.status) ? (
+                    <Badge variant={STATUS_BADGE_VARIANT[complaint.status] || 'secondary'}>{complaint.status}</Badge>
+                  ) : (
+                    <Select value={currentStatus} onValueChange={handleStatusChange}>
+                      <SelectTrigger className="w-[200px] glass-input">
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Under Review">Under Review</SelectItem>
+                        <SelectItem value="Needs Info">Needs Info</SelectItem>
+                        <SelectItem value="In Progress">In Progress</SelectItem>
+                        <SelectItem value="Transferred">Transferred</SelectItem>
+                        <SelectItem value="Resolved">Resolved</SelectItem>
+                        <SelectItem value="Rejected">Rejected</SelectItem>
+                        <SelectItem value="Closed">Closed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )
                 ) : userRole === 'worker' ? (
-                  <Select value={currentStatus} onValueChange={handleStatusChange}>
-                    <SelectTrigger className="w-[200px] glass-input">
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="In Progress">In Progress</SelectItem>
-                      <SelectItem value="Resolved">Resolved</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  // Worker can only move In Progress → Resolved; all other states are read-only for them
+                  complaint.status === 'In Progress' ? (
+                    <Select value={currentStatus} onValueChange={handleStatusChange}>
+                      <SelectTrigger className="w-[200px] glass-input">
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Resolved">Mark as Resolved</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Badge variant={STATUS_BADGE_VARIANT[complaint.status] || 'secondary'}>{complaint.status}</Badge>
+                  )
                 ) : (
                   <Badge variant={STATUS_BADGE_VARIANT[complaint.status] || 'secondary'}>{complaint.status}</Badge>
                 )}
               </div>
+              {/* Citizen dispute / accept buttons — only shown when Resolved and user is the complaint owner */}
+              {userRole === 'citizen' && complaint.status === 'Resolved' && (() => {
+                const currentUserId = (user?._id || user?.id || '').toString();
+                const isOwner = complaint.citizenId && (complaint.citizenId._id || complaint.citizenId).toString() === currentUserId;
+                return isOwner ? (
+                  <div className="flex gap-2 pt-1">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1 border-green-500 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20"
+                      onClick={() => handleStatusChange('Closed')}
+                    >
+                      Accept &amp; Close
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1 border-amber-500 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                      onClick={() => handleStatusChange('Reopened')}
+                    >
+                      Dispute Resolution
+                    </Button>
+                  </div>
+                ) : null;
+              })()}
               {/* Rejection reason field — shown only when Rejected is selected by staff/admin */}
               {(userRole === 'staff' || userRole === 'admin') && currentStatus === 'Rejected' && (
                 <div className="flex flex-col gap-1">
