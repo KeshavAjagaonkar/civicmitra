@@ -23,6 +23,21 @@ const {
 const { protect, authorize } = require('../middleware/authMiddleware');
 const upload = require('../middleware/uploadMiddleware');
 const { validate, createComplaintSchema, updateComplaintStatusSchema } = require('../middleware/validationMiddleware');
+const Complaint = require('../models/Complaint');
+
+// GET /api/complaints/public-stats — no auth, for landing page hero counters
+router.get('/public-stats', async (req, res) => {
+  try {
+    const [total, resolved, inProgress] = await Promise.all([
+      Complaint.countDocuments({ isPublic: true }),
+      Complaint.countDocuments({ isPublic: true, status: 'Resolved' }),
+      Complaint.countDocuments({ isPublic: true, status: 'In Progress' }),
+    ]);
+    res.json({ success: true, data: { total, resolved, inProgress } });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to fetch stats' });
+  }
+});
 
 router.route('/')
   .post(protect, upload.array('attachments'), validate(createComplaintSchema), createComplaint);

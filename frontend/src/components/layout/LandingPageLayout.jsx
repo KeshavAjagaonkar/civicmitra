@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useNavigate } from 'react-router-dom';
 import Footer from '../Footer';
 import { Button } from '../ui/Button';
@@ -9,11 +9,18 @@ import { useTheme } from '@/context/ThemeContext';
 // New Header for Landing Page - consistent with Navbar
 const LandingHeader = () => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [scrolled, setScrolled] = useState(false);
     const navigate = useNavigate();
     const { isDarkMode, toggleDarkMode } = useTheme();
 
+    useEffect(() => {
+        const onScroll = () => setScrolled(window.scrollY > 12);
+        window.addEventListener('scroll', onScroll, { passive: true });
+        return () => window.removeEventListener('scroll', onScroll);
+    }, []);
+
     return (
-        <header className="sticky top-0 z-40 glass-navbar">
+        <header className={cn("sticky top-0 z-40 glass-navbar transition-all duration-200", scrolled && "backdrop-blur-sm shadow-sm")}>
             <div className="container mx-auto flex items-center justify-between h-16 px-4 md:px-8">
                 <Link to="/" className="text-2xl font-bold text-blue-600">
                     CivicMitra
@@ -55,7 +62,7 @@ const LandingHeader = () => {
 
             {/* Mobile Menu */}
             {isMobileMenuOpen && (
-                <div className="md:hidden glass-navbar border-t border-white/20">
+                <div className="md:hidden glass-navbar border-t border-gray-200 dark:border-gray-700">
                     <div className="container mx-auto px-4 py-4 space-y-4">
                         {/* Mobile Navigation Links */}
                         <nav className="flex flex-col space-y-2">
@@ -97,7 +104,7 @@ const LandingHeader = () => {
                         </nav>
 
                         {/* Mobile Auth Buttons */}
-                        <div className="flex flex-col space-y-2 pt-4 border-t border-white/20">
+                        <div className="flex flex-col space-y-2 pt-4 border-t border-gray-200 dark:border-gray-700">
                             <Button 
                                 variant="ghost" 
                                 className="w-full justify-start" 

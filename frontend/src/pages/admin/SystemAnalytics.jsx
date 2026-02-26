@@ -28,7 +28,7 @@ import useApi from '@/hooks/useApi';
 import { useToast } from '@/components/ui/use-toast';
 
 const COLORS = {
-  primary: '#0d9488',   // deep teal
+  primary: '#2563eb',   // blue-600
   success: '#059669',   // emerald
   warning: '#d97706',   // warm amber
   danger: '#e11d48',    // rose

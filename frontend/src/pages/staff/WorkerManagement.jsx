@@ -126,11 +126,11 @@ const WorkerManagement = () => {
 
   const getStatusBadge = (isActive) => {
     return isActive ? (
-      <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
+      <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800">
         Active
       </Badge>
     ) : (
-      <Badge variant="outline" className="bg-gray-100 text-gray-800 border-gray-200">
+      <Badge variant="outline" className="bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700">
         Inactive
       </Badge>
     );
@@ -173,10 +173,10 @@ const WorkerManagement = () => {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-96 bg-red-50 text-red-700 rounded-lg p-8">
+      <div className="glass-card flex flex-col items-center justify-center h-96 p-8 text-red-700 dark:text-red-400">
         <AlertTriangle className="w-10 h-10 mb-2" />
         <h3 className="text-lg font-semibold">Failed to load workers</h3>
-        <p className="text-sm">{error}</p>
+        <p className="text-sm text-gray-500">{error}</p>
         <Button onClick={fetchWorkers} variant="destructive" className="mt-4">
           Try Again
         </Button>
@@ -348,7 +348,7 @@ const WorkerManagement = () => {
 
           <div className="space-y-4 py-4">
             {/* Worker Info */}
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+            <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
               <div className="flex items-center gap-2 mb-2">
                 <User className="w-4 h-4 text-blue-600" />
                 <span className="font-semibold text-blue-900 dark:text-blue-100">

@@ -63,7 +63,7 @@ const AssignWorker = () => {
       );
       if (response.success) {
         toast({ title: "Success!", description: `Worker has been assigned to complaint #${complaint._id.slice(-6)}.` });
-        navigate('/staff/complaints');
+        navigate(-1);
       }
     } catch (error) {
       toast({ title: "Assignment Failed", description: error.message, variant: "destructive" });

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Pencil, ListChecks, MessageCircle } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 const steps = [
   {
@@ -21,25 +22,35 @@ const steps = [
 
 const HowItWorks = () => {
   return (
-    <section className="py-12 md:py-20 bg-white/30 dark:bg-gray-900/30" id="how-it-works">
+    <section className="py-12 md:py-20 bg-gray-50 dark:bg-gray-900" id="how-it-works">
       <div className="container mx-auto px-4">
-        <div className="text-center mb-8 md:mb-12">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+          className="text-center mb-8 md:mb-12"
+        >
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3">How It Works</h2>
           <p className="text-base md:text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
             A simple, transparent process.
           </p>
-        </div>
+        </motion.div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
           {steps.map((step, index) => (
-            <div key={index} className="text-center relative">
-              {/* Step Connector Line (Desktop) */}
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: index * 0.1 }}
+              className="text-center relative"
+            >
               {index < steps.length - 1 && (
-                <div className="hidden md:block absolute top-10 left-1/2 w-full h-0.5 bg-gradient-to-r from-blue-300 to-green-300 dark:from-blue-600 dark:to-green-600 transform translate-x-10 z-0"></div>
+                <div className="hidden md:block absolute top-10 left-1/2 w-full h-0.5 bg-gray-200 dark:bg-gray-700 transform translate-x-10 z-0"></div>
               )}
-              
-              {/* Step Content */}
               <div className="relative z-10">
-                <div className="flex items-center justify-center h-16 w-16 md:h-20 md:w-20 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-800 dark:to-blue-900 mx-auto mb-4 md:mb-6 shadow-lg">
+                <div className="flex items-center justify-center h-16 w-16 md:h-20 md:w-20 rounded-full bg-blue-100 dark:bg-blue-900 mx-auto mb-4 md:mb-6">
                   {step.icon}
                 </div>
                 <h3 className="text-lg md:text-xl font-bold mb-2 md:mb-3">{step.title}</h3>
@@ -47,7 +58,7 @@ const HowItWorks = () => {
                   {step.description}
                 </p>
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
       </div>

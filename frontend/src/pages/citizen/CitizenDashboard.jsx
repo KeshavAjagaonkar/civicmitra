@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { FileText, CheckCircle, Clock, Plus, TrendingUp, AlertCircle, Loader2, AlertTriangle } from 'lucide-react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import ComplaintTable from '@/components/ComplaintTable';
 import { FloatingActionButton } from '@/components/ui/FloatingActionButton';
 import useDashboardStats from '@/hooks/useDashboardStats';
@@ -12,6 +12,7 @@ import { useAuth } from '@/hooks/useAuth';
 const CitizenDashboard = () => {
   const { slug } = useParams();
   const base = slug ? `/${slug}` : '';
+  const navigate = useNavigate();
   const { stats, loading, error, refetch } = useDashboardStats();
   const { user } = useAuth();
 
@@ -254,7 +255,7 @@ const CitizenDashboard = () => {
       {/* Floating Action Button */}
       <FloatingActionButton
         tooltip="File New Complaint"
-        onClick={() => window.location.href = '/complaints/create'}
+        onClick={() => navigate(`${base}/complaints/create`)}
       >
         <Plus className="h-6 w-6" />
       </FloatingActionButton>

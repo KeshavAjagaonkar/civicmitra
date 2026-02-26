@@ -101,7 +101,7 @@ const FeedbackList = () => {
                       {complaint.description?.length > 150 ? '...' : ''}
                     </CardDescription>
                   </div>
-                  <span className="status-resolved ml-4">Resolved</span>
+                  <Badge variant="success" className="ml-4">Resolved</Badge>
                 </div>
               </CardHeader>
               <CardContent>
@@ -114,7 +114,6 @@ const FeedbackList = () => {
                   </div>
                   <Button
                     onClick={() => handleGiveFeedback(complaint._id)}
-                    className="btn-primary"
                   >
                     <Star className="h-4 w-4 mr-2" />
                     Give Feedback

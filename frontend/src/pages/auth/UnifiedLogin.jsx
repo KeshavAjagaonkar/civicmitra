@@ -134,15 +134,15 @@ const UnifiedLogin = () => {
 
   return (
     <div className="flex items-center justify-center p-4">
-      <Card className="w-full max-w-lg mx-auto shadow-2xl border-0 glass-card">
+      <Card className="w-full max-w-lg mx-auto glass-card">
         <CardHeader className="text-center space-y-4 pb-8">
           <div className="flex justify-center">
-            <div className={"p-4 bg-gradient-to-br rounded-2xl shadow-lg " + (mode === 'login' ? 'from-blue-500 to-indigo-600' : 'from-purple-500 to-pink-600')}>
+            <div className={`p-4 rounded-xl ${mode === 'login' ? 'bg-blue-600' : 'bg-violet-600'}`}>
               {mode === 'login' ? <LogIn className="h-10 w-10 text-white" /> : <UserPlus className="h-10 w-10 text-white" />}
             </div>
           </div>
           <div className="space-y-2">
-            <CardTitle className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+            <CardTitle className="text-3xl font-bold text-gray-900 dark:text-gray-100">
               {mode === 'login' ? 'Welcome Back' : 'Join CivicMitra'}
             </CardTitle>
             <CardDescription className="text-base">
@@ -269,7 +269,7 @@ const UnifiedLogin = () => {
               </div>
             )}
 
-            <Button type="submit" className="w-full h-12 text-base font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700" loading={authLoading}>
+            <Button type="submit" className="w-full h-12 text-base font-semibold" loading={authLoading}>
               {mode === 'login' ? 'Sign In' : 'Create Account'}
             </Button>
 

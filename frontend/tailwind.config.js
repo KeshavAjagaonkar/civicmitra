@@ -53,17 +53,6 @@ module.exports = {
           foreground: "hsl(var(--card-foreground))",
         },
       },
-      backgroundImage: {
-        'gradient-blue-green': 'linear-gradient(to right, #2563eb, #10b981)',
-        'gradient-orange-red': 'linear-gradient(to right, #fb923c, #f87171)',
-      },
-      backdropBlur: {
-        xs: '2px',
-        sm: '4px',
-        md: '8px',
-        lg: '12px',
-        xl: '16px',
-      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",

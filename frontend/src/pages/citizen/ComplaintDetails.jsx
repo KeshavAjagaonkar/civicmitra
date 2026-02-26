@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -13,6 +13,66 @@ import { useToast } from '@/components/ui/use-toast';
 import { ArrowLeft, Star, Sparkles, AlertCircle, MapPin, TrendingUp } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/Dialog';
 import { useAuth } from '@/hooks/useAuth';
+import 'leaflet/dist/leaflet.css';
+
+// Embedded location map — lazy loads Leaflet only when coords exist
+const LocationMap = ({ complaint }) => {
+  const [MapComponents, setMapComponents] = useState(null);
+
+  const coords = complaint.location?.coordinates;
+  const hasCoords = Array.isArray(coords) && coords.length === 2 &&
+    typeof coords[0] === 'number' && typeof coords[1] === 'number';
+
+  useEffect(() => {
+    if (!hasCoords) return;
+    Promise.all([import('react-leaflet'), import('leaflet')]).then(([rl, L]) => {
+      delete L.default.Icon.Default.prototype._getIconUrl;
+      L.default.Icon.Default.mergeOptions({
+        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+      });
+      setMapComponents(rl);
+    });
+  }, [hasCoords]);
+
+  if (!hasCoords) return null;
+
+  const [lng, lat] = coords;
+
+  if (!MapComponents) {
+    return (
+      <Card className="glass-card mt-4">
+        <CardHeader><CardTitle className="text-base flex items-center gap-2"><MapPin className="w-4 h-4" />Location</CardTitle></CardHeader>
+        <CardContent className="h-36 flex items-center justify-center text-gray-400 text-sm">Loading map…</CardContent>
+      </Card>
+    );
+  }
+
+  const { MapContainer, TileLayer, Marker } = MapComponents;
+
+  return (
+    <Card className="glass-card mt-4">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base flex items-center gap-2">
+          <MapPin className="w-4 h-4 text-blue-600" />Location
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-0 rounded-b-lg overflow-hidden" style={{ height: '192px' }}>
+        <MapContainer
+          center={[lat, lng]}
+          zoom={15}
+          style={{ height: '100%', width: '100%' }}
+          scrollWheelZoom={false}
+          zoomControl={false}
+        >
+          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+          <Marker position={[lat, lng]} />
+        </MapContainer>
+      </CardContent>
+    </Card>
+  );
+};
 
 const statusVariant = {
   Submitted: 'secondary',
@@ -217,10 +277,10 @@ const ComplaintDetails = () => {
             <CardHeader>
               <CardTitle>Details</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4 bg-white/50 dark:bg-gray-900/50 rounded-lg p-6">
+            <CardContent className="space-y-4">
               {/* AI Summary Section */}
               {complaint.aiSummary && (
-                <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                   <div className="flex items-start gap-3">
                     <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
                     <div className="flex-1 space-y-3">
@@ -245,19 +305,19 @@ const ComplaintDetails = () => {
 
                       <div className="flex flex-wrap gap-2">
                         {complaint.aiSummary.extractedInfo?.urgency && (
-                          <Badge variant="outline" className="text-xs bg-white/50 dark:bg-gray-800/50 border-blue-300 dark:border-blue-700">
+                          <Badge variant="outline" className="text-xs border-blue-300 dark:border-blue-700">
                             <AlertCircle className="w-3 h-3 mr-1" />
                             {complaint.aiSummary.extractedInfo.urgency} Urgency
                           </Badge>
                         )}
                         {complaint.aiSummary.sentiment && complaint.aiSummary.sentiment !== 'Neutral' && (
-                          <Badge variant="outline" className="text-xs bg-white/50 dark:bg-gray-800/50 border-blue-300 dark:border-blue-700">
+                          <Badge variant="outline" className="text-xs border-blue-300 dark:border-blue-700">
                             <TrendingUp className="w-3 h-3 mr-1" />
                             {complaint.aiSummary.sentiment}
                           </Badge>
                         )}
                         {complaint.aiSummary.extractedInfo?.affectedArea && (
-                          <Badge variant="outline" className="text-xs bg-white/50 dark:bg-gray-800/50 border-blue-300 dark:border-blue-700">
+                          <Badge variant="outline" className="text-xs border-blue-300 dark:border-blue-700">
                             <MapPin className="w-3 h-3 mr-1" />
                             {complaint.aiSummary.extractedInfo.affectedArea}
                           </Badge>
@@ -326,6 +386,7 @@ const ComplaintDetails = () => {
                 <strong>Location:</strong>
                 <p className="text-gray-600 mt-1">{typeof complaint.location === 'object' ? complaint.location.address : complaint.location}</p>
               </div>
+              <LocationMap complaint={complaint} />
               {complaint.attachments && complaint.attachments.length > 0 && (
                 <div>
                   <strong>Attachments:</strong>

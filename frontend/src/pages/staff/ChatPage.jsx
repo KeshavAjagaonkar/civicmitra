@@ -93,7 +93,7 @@ const ChatPage = () => {
                     className={'w-full text-left p-3 rounded-lg transition-colors ' + (
                       selectedComplaint?._id === complaint._id
                         ? 'bg-blue-100 dark:bg-blue-900/30 border-2 border-blue-500'
-                        : 'bg-white/50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-700'
+                        : 'bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
                     )}
                   >
                     <div className="flex items-start justify-between gap-2">

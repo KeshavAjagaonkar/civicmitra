@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import useApi from '@/hooks/useApi';
 import { useToast } from '@/components/ui/use-toast';
 import { Download, FileSpreadsheet, FileText, Loader2 } from 'lucide-react';
+import { Badge } from '@/components/ui/Badge';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -598,13 +599,13 @@ const StaffStats = () => {
                   </p>
                 </div>
                 <div className="text-right">
-                  <span className={`text-xs px-2 py-1 rounded-full ${
-                    complaint.status === 'Resolved' ? 'bg-green-100 text-green-800' :
-                    complaint.status === 'In Progress' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-blue-100 text-blue-800'
-                  }`}>
+                  <Badge variant={
+                    complaint.status === 'Resolved' ? 'success' :
+                    complaint.status === 'In Progress' ? 'warning' :
+                    'secondary'
+                  }>
                     {complaint.status}
-                  </span>
+                  </Badge>
                 </div>
               </div>
             ))}

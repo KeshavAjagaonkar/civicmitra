@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
-import { Upload, FileText } from 'lucide-react';
+import { Upload, FileText, ThumbsUp, AlertTriangle, MapPin } from 'lucide-react';
 import LocationPicker from '@/components/LocationPicker';
 import { useToast } from '@/components/ui/use-toast';
 import { useDropzone } from 'react-dropzone';
@@ -185,7 +185,7 @@ const FileComplaint = () => {
               <Input
                 id="title"
                 placeholder="e.g., Pothole on Main Street causing vehicle damage"
-                className="glass-input input-enhanced"
+                className="glass-input"
                 {...register('title')}
               />
               <p className="form-helper">Provide a clear, specific title for your complaint</p>
@@ -360,59 +360,77 @@ const FileComplaint = () => {
       <Dialog open={isDuplicateModalOpen} onOpenChange={setIsDuplicateModalOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="text-xl text-orange-600 flex items-center gap-2">
-              ⚠️ Wait! Similar Issues Found
+            <DialogTitle className="text-xl flex items-center gap-2 text-gray-900 dark:text-gray-100">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Similar Complaints Found
             </DialogTitle>
             <DialogDescription>
-              We found existing complaints that look very similar to yours. Support them to give the issue more visibility!
+              We found {duplicateMatches.length} complaint{duplicateMatches.length !== 1 ? 's' : ''} similar to yours. Support an existing one to boost its visibility, or file a new complaint if your issue is different.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 max-h-96 overflow-y-auto pr-2 mt-4">
-            {duplicateMatches.map((match, idx) => (
-              <div key={idx} className="p-4 border rounded-lg bg-orange-50/50 dark:bg-orange-950/20">
-                <div className="flex justify-between items-start mb-2">
-                  <h4 className="font-semibold text-lg">{match.complaint.title}</h4>
-                  <div className="text-sm font-medium text-orange-600 bg-orange-100 px-2 py-1 rounded">
-                    {match.similarity}% Match
+          <div className="space-y-3 max-h-96 overflow-y-auto pr-1 mt-2">
+            {duplicateMatches.map((match, idx) => {
+              const similarity = match.similarity;
+              const simColor = similarity >= 80
+                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                : similarity >= 60
+                  ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                  : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400';
+              const supportCount = match.complaint.upvotes?.count || 0;
+
+              return (
+                <div key={idx} className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                  <div className="flex justify-between items-start mb-1.5">
+                    <h4 className="font-semibold text-base text-gray-900 dark:text-gray-100 leading-tight pr-3">
+                      {match.complaint.title}
+                    </h4>
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${simColor}`}>
+                      {similarity}% similar
+                    </span>
                   </div>
+                  <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400 mb-3">
+                    <span className="flex items-center gap-1">
+                      <MapPin className="w-3 h-3" />
+                      {typeof match.complaint.location === 'object' ? match.complaint.location.address : match.complaint.location}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <ThumbsUp className="w-3 h-3" />
+                      {supportCount} supporters
+                    </span>
+                    <Badge variant={match.complaint.status === 'Resolved' ? 'success' : match.complaint.status === 'In Progress' ? 'warning' : 'secondary'} className="text-xs">
+                      {match.complaint.status}
+                    </Badge>
+                  </div>
+                  <Button
+                    variant="default"
+                    className="w-full"
+                    onClick={async () => {
+                      try {
+                        await request(`/api/complaints/${match.complaint._id}/upvote`, 'POST');
+                      } catch (_) {}
+                      setIsDuplicateModalOpen(false);
+                      navigate(user?.slug ? `/${user.slug}/complaints/${match.complaint._id}` : `/complaints/${match.complaint._id}`);
+                    }}
+                  >
+                    <ThumbsUp className="w-4 h-4 mr-2" />
+                    Support this — join {supportCount > 0 ? `${supportCount} other${supportCount !== 1 ? 's' : ''}` : 'the community'}
+                  </Button>
                 </div>
-                <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2 mb-3">
-                  {match.complaint.description}
-                </p>
-                <div className="flex gap-4 text-xs text-gray-500 mb-3">
-                  <span>📍 {typeof match.complaint.location === 'object' ? match.complaint.location.address : match.complaint.location}</span>
-                  <span>👍 {match.complaint.upvotes?.count || 0} supporters</span>
-                </div>
-                <Button
-                  variant="outline"
-                  className="w-full border-orange-200 hover:bg-orange-100 hover:text-orange-700"
-                  onClick={() => {
-                    setIsDuplicateModalOpen(false);
-                    navigate(user?.slug ? `/${user.slug}/complaints/${match.complaint._id}` : `/complaints/${match.complaint._id}`);
-                  }}
-                >
-                  View & Support This Instead
-                </Button>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
-          <DialogFooter className="mt-6 flex flex-col sm:flex-row gap-3 sm:justify-between">
+          <DialogFooter className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
             <Button
-              variant="ghost"
-              onClick={() => setIsDuplicateModalOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="default"
+              variant="outline"
+              className="w-full sm:w-auto"
               onClick={() => {
                 setIsDuplicateModalOpen(false);
                 finalSubmit(pendingFormData);
               }}
             >
-              No, mine is different. File anyway.
+              My issue is different — File new
             </Button>
           </DialogFooter>
         </DialogContent>

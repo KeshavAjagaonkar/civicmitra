@@ -5,6 +5,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '../ui/Accordion';
+import { motion } from 'framer-motion';
 
 const faqs = [
   {
@@ -27,21 +28,33 @@ const faqs = [
 
 const FAQ = () => {
   return (
-    <section className="py-12 md:py-20 bg-white/30 dark:bg-gray-900/30" id="faq">
+    <section className="py-12 md:py-20 bg-white dark:bg-gray-950" id="faq">
       <div className="container mx-auto px-4 max-w-4xl">
-        <div className="text-center mb-8 md:mb-12">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+          className="text-center mb-8 md:mb-12"
+        >
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3">Frequently Asked Questions</h2>
           <p className="text-base md:text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
             Get answers to common questions about CivicMitra.
           </p>
-        </div>
-        <div className="glass-card p-6 md:p-8">
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="glass-card p-6 md:p-8"
+        >
           <Accordion type="single" collapsible className="w-full space-y-2">
             {faqs.map((faq, index) => (
-              <AccordionItem 
-                value={`item-${index}`} 
+              <AccordionItem
+                value={`item-${index}`}
                 key={index}
-                className="border border-white/20 rounded-lg px-4 bg-white/10 dark:bg-gray-800/10"
+                className="border border-gray-200 dark:border-gray-700 rounded-lg px-4"
               >
                 <AccordionTrigger className="text-left hover:no-underline py-4 text-sm md:text-base font-medium">
                   {faq.question}
@@ -52,7 +65,7 @@ const FAQ = () => {
               </AccordionItem>
             ))}
           </Accordion>
-        </div>
+        </motion.div>
       </div>
     </section>
   );

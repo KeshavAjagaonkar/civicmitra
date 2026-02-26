@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/DropdownMenu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose, DialogTrigger } from '@/components/ui/Dialog';
 import {
-  Search, Filter, Eye, Edit, Trash2, Download, FileText, Clock, CheckCircle, AlertCircle, Loader2, MoreHorizontal, Sparkles
+  Search, Filter, Eye, Edit, Trash2, Download, FileText, Clock, CheckCircle, AlertCircle, AlertTriangle, Loader2, MoreHorizontal, Sparkles
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import useComplaintManagement from '@/hooks/useComplaintManagement';
@@ -63,7 +63,11 @@ const ComplaintManagement = () => {
   };
   
   const getStatusVariant = (status) => ({ 'Submitted': 'secondary', 'In Progress': 'default', 'Resolved': 'outline', 'Closed': 'destructive' }[status] || 'secondary');
-  const getPriorityColor = (priority) => ({ 'High': 'bg-red-100 text-red-800', 'Medium': 'bg-yellow-100 text-yellow-800', 'Low': 'bg-green-100 text-green-800' }[priority] || 'bg-gray-100');
+  const getPriorityColor = (priority) => ({
+    'High': 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400',
+    'Medium': 'bg-yellow-100 text-yellow-800 dark:bg-amber-900/20 dark:text-amber-400',
+    'Low': 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+  }[priority] || 'bg-gray-100 dark:bg-gray-800');
   const formatDate = (dateString) => new Date(dateString).toLocaleDateString();
 
   return (
@@ -99,7 +103,7 @@ const ComplaintManagement = () => {
       ) : (
         <div className="space-y-4">
           {filteredComplaints.map(c => (
-            <Card key={c._id}>
+            <Card key={c._id} className="glass-card mb-4">
               <CardContent className="pt-6">
                 <div className="flex justify-between items-start gap-4">
                   <div className="flex-1">

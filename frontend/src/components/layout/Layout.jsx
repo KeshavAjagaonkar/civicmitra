@@ -21,7 +21,7 @@ const Layout = () => {
             onClick={() => setIsSidebarOpen(false)}
           ></div>
         )}
-        <main className="flex-1 p-3 sm:p-4 md:p-6 lg:ml-64 transition-all duration-300 ease-in-out overflow-x-hidden">
+        <main className="flex-1 p-4 sm:p-6 md:p-8 lg:ml-64 transition-all duration-300 ease-in-out overflow-x-hidden">
           <Outlet />
         </main>
       </div>

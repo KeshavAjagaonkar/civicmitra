@@ -63,10 +63,7 @@ const ProfilePage = () => {
 
   const handleSaveProfile = async () => {
     try {
-      const response = await request('/api/auth/profile', {
-        method: 'PUT',
-        body: profileData,
-      });
+      const response = await request('/api/auth/profile', 'PUT', profileData);
 
       if (response?.success) {
         toast({ title: "Profile Updated", description: "Your information has been saved." });
@@ -88,12 +85,9 @@ const ProfilePage = () => {
     }
 
     try {
-      const response = await request('/api/auth/password', {
-        method: 'PUT',
-        body: {
-          currentPassword: passwordData.currentPassword,
-          newPassword: passwordData.newPassword
-        },
+      const response = await request('/api/auth/password', 'PUT', {
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword,
       });
 
       if (response?.success) {
@@ -207,8 +201,73 @@ const ProfilePage = () => {
                 <DialogContent>
                   <DialogHeader><DialogTitle>Change Password</DialogTitle></DialogHeader>
                   <div className="space-y-4 pt-4">
-                    {/* Password Fields */}
-                    {/* ... (Password fields are identical, no changes needed) ... */}
+                    <div className="space-y-2">
+                      <Label htmlFor="currentPassword">Current Password</Label>
+                      <div className="relative">
+                        <Input
+                          id="currentPassword"
+                          name="currentPassword"
+                          type={showCurrentPassword ? 'text' : 'password'}
+                          value={passwordData.currentPassword}
+                          onChange={handlePasswordInputChange}
+                          placeholder="Enter current password"
+                          className="pr-10"
+                        />
+                        <button
+                          type="button"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                          onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                        >
+                          {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="newPassword">New Password</Label>
+                      <div className="relative">
+                        <Input
+                          id="newPassword"
+                          name="newPassword"
+                          type={showNewPassword ? 'text' : 'password'}
+                          value={passwordData.newPassword}
+                          onChange={handlePasswordInputChange}
+                          placeholder="At least 6 characters"
+                          className="pr-10"
+                        />
+                        <button
+                          type="button"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                          onClick={() => setShowNewPassword(!showNewPassword)}
+                        >
+                          {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="confirmNewPassword">Confirm New Password</Label>
+                      <div className="relative">
+                        <Input
+                          id="confirmNewPassword"
+                          name="confirmPassword"
+                          type={showConfirmPassword ? 'text' : 'password'}
+                          value={passwordData.confirmPassword}
+                          onChange={handlePasswordInputChange}
+                          placeholder="Confirm new password"
+                          className="pr-10"
+                        />
+                        <button
+                          type="button"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        >
+                          {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 justify-end pt-2">
+                      <Button variant="outline" onClick={() => setIsPasswordModalOpen(false)}>Cancel</Button>
+                      <Button onClick={handleChangePassword} loading={isLoading} loadingText="Updating...">Update Password</Button>
+                    </div>
                   </div>
                 </DialogContent>
               </Dialog>

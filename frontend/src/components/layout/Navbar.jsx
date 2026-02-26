@@ -92,7 +92,7 @@ const Navbar = ({ toggleSidebar }) => {
           <Button variant="ghost" size="icon" className="lg:hidden" onClick={toggleSidebar}>
             <Menu className="h-6 w-6" />
           </Button>
-          <Link to={getLogoPath()} className="text-2xl font-bold text-blue-600">
+          <Link to={getLogoPath()} className="text-xl font-bold text-blue-600">
             CivicMitra
           </Link>
         </div>
@@ -161,8 +161,12 @@ const Navbar = ({ toggleSidebar }) => {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <User className="h-5 w-5" />
+              <Button variant="ghost" size="icon" className="rounded-full overflow-hidden p-0 h-9 w-9">
+                <div className="h-9 w-9 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                  <span className="text-sm font-semibold text-blue-700 dark:text-blue-400">
+                    {user?.name ? user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : <User className="h-4 w-4" />}
+                  </span>
+                </div>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg" align="end" forceMount>

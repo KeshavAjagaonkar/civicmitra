@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { Eye, MessageCircle, Star } from 'lucide-react';
+import { Eye, MessageCircle, Star, Loader2, FileText, Zap, CheckCircle, Archive, Circle } from 'lucide-react';
 import useApi from '@/hooks/useApi';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -23,7 +23,6 @@ const MyComplaints = () => {
         if (result.success) {
           setComplaints(result.data);
 
-          // Fetch feedback for all resolved complaints
           const resolvedComplaints = result.data.filter(c => c.status === 'Resolved');
           const feedbackPromises = resolvedComplaints.map(async (complaint) => {
             try {
@@ -52,41 +51,31 @@ const MyComplaints = () => {
     fetchComplaints();
   }, [request, toast]);
 
-  const getStatusClass = (status) => {
+  const getStatusBadge = (status) => {
     switch (status) {
-      case 'Submitted': return 'status-submitted';
-      case 'In Progress': return 'status-in-progress';
-      case 'Resolved': return 'status-resolved';
-      case 'Closed': return 'status-closed';
-      default: return 'status-submitted';
+      case 'Submitted':
+        return <Badge variant="secondary" className="flex items-center gap-1"><FileText className="w-3 h-3" /> Submitted</Badge>;
+      case 'In Progress':
+        return <Badge variant="warning" className="flex items-center gap-1"><Zap className="w-3 h-3" /> In Progress</Badge>;
+      case 'Resolved':
+        return <Badge variant="success" className="flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Resolved</Badge>;
+      case 'Closed':
+        return <Badge variant="outline" className="flex items-center gap-1 text-gray-500"><Archive className="w-3 h-3" /> Closed</Badge>;
+      default:
+        return <Badge variant="secondary">{status}</Badge>;
     }
   };
 
-  const getPriorityClass = (priority) => {
+  const getPriorityBadge = (priority) => {
     switch (priority) {
-      case 'High': return 'priority-high';
-      case 'Medium': return 'priority-medium';
-      case 'Low': return 'priority-low';
-      default: return 'priority-medium';
-    }
-  };
-
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'Submitted': return '📝';
-      case 'In Progress': return '⚡';
-      case 'Resolved': return '✅';
-      case 'Closed': return '🔒';
-      default: return '📝';
-    }
-  };
-
-  const getPriorityIcon = (priority) => {
-    switch (priority) {
-      case 'High': return '🔴';
-      case 'Medium': return '🟡';
-      case 'Low': return '🟢';
-      default: return '🟡';
+      case 'High':
+        return <Badge className="bg-red-100 text-red-800 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800 flex items-center gap-1"><Circle className="w-2.5 h-2.5 fill-current" /> High</Badge>;
+      case 'Medium':
+        return <Badge className="bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800 flex items-center gap-1"><Circle className="w-2.5 h-2.5 fill-current" /> Medium</Badge>;
+      case 'Low':
+        return <Badge className="bg-green-100 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800 flex items-center gap-1"><Circle className="w-2.5 h-2.5 fill-current" /> Low</Badge>;
+      default:
+        return <Badge variant="outline">{priority}</Badge>;
     }
   };
 
@@ -103,7 +92,8 @@ const MyComplaints = () => {
       <div className="space-y-8">
         <h1 className="text-3xl font-bold">My Complaints</h1>
         <div className="flex items-center justify-center h-64">
-          <div className="text-lg">Loading complaints...</div>
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <span className="ml-2 text-lg">Loading complaints...</span>
         </div>
       </div>
     );
@@ -150,12 +140,8 @@ const MyComplaints = () => {
                     </p>
                   </div>
                   <div className="flex gap-2 flex-wrap sm:flex-nowrap">
-                    <span className={getStatusClass(complaint.status)}>
-                      {getStatusIcon(complaint.status)} {complaint.status}
-                    </span>
-                    <span className={getPriorityClass(complaint.priority)}>
-                      {getPriorityIcon(complaint.priority)} {complaint.priority}
-                    </span>
+                    {getStatusBadge(complaint.status)}
+                    {getPriorityBadge(complaint.priority)}
                   </div>
                 </div>
               </CardHeader>

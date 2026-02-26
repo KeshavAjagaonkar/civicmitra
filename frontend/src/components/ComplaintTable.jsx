@@ -24,9 +24,9 @@ const statusVariant = {
 };
 
 const priorityStyles = {
-  High: 'bg-red-100 text-red-800 border-red-200 hover:bg-red-100',
-  Medium: 'bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-100',
-  Low: 'bg-green-100 text-green-800 border-green-200 hover:bg-green-100',
+  High: 'bg-red-100 text-red-800 border-red-200 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800',
+  Medium: 'bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-100 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800',
+  Low: 'bg-green-100 text-green-800 border-green-200 hover:bg-green-100 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800',
 };
 
 const ComplaintTable = ({ filter, limit }) => {
@@ -84,7 +84,7 @@ const ComplaintTable = ({ filter, limit }) => {
     return (
       <div className="glass-card overflow-x-auto -mx-4 sm:mx-0 p-8">
         <div className="flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           <span className="ml-2 text-gray-600">Loading complaints...</span>
         </div>
       </div>
@@ -107,7 +107,7 @@ const ComplaintTable = ({ filter, limit }) => {
   }
 
   return (
-    <div className="overflow-x-auto -mx-4 sm:mx-0 rounded-2xl">
+    <div className="overflow-x-auto -mx-4 sm:mx-0 rounded-xl">
       <Table>
         <TableHeader>
           <TableRow>
@@ -124,7 +124,7 @@ const ComplaintTable = ({ filter, limit }) => {
           {filteredComplaints.length === 0 ? (
             <TableRow>
               <TableCell colSpan={7} className="text-center py-8 text-gray-500">
-                No complaints found. <Link to={(window.location.pathname.split('/').length > 2 ? `/${window.location.pathname.split('/')[1]}` : '') + '/complaints/create'} className="text-indigo-600 hover:underline">File your first complaint</Link>
+                No complaints found. <Link to={(window.location.pathname.split('/').length > 2 ? `/${window.location.pathname.split('/')[1]}` : '') + '/complaints/create'} className="text-blue-600 hover:underline">File your first complaint</Link>
               </TableCell>
             </TableRow>
           ) : (

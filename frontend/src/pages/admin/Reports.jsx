@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
@@ -15,6 +16,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 const Reports = () => {
+  const navigate = useNavigate();
   const { request, isLoading } = useApi();
   const { toast } = useToast();
 
@@ -570,7 +572,7 @@ const Reports = () => {
                 </div>
               </div>
             </div>
-            <Button variant="outline" className="w-full" onClick={() => window.location.href = '/admin/analytics'}>
+            <Button variant="outline" className="w-full" onClick={() => navigate('/admin/analytics')}>
               <BarChart3 className="mr-2 h-4 w-4" />
               View Detailed Analytics
             </Button>

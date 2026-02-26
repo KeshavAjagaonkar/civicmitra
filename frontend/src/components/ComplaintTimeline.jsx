@@ -86,8 +86,7 @@ const ComplaintTimeline = ({ isEditable, complaintId, timeline = [] }) => {
           description: 'Timeline updated successfully',
         });
 
-        // Reload page to show updated timeline
-        window.location.reload();
+        // Timeline already updated from response above
       }
     } catch (err) {
       toast({
@@ -120,7 +119,7 @@ const ComplaintTimeline = ({ isEditable, complaintId, timeline = [] }) => {
           <div className="relative pl-8">
             {timelineEvents.map((event, index) => (
               <div key={index} className="mb-8 last:mb-0">
-                <div className="absolute w-3 h-3 bg-blue-500 rounded-full mt-1.5 -left-1.5 border border-white dark:border-gray-950" />
+                <div className="absolute w-3 h-3 bg-blue-600 rounded-full mt-1.5 -left-1.5 border border-white dark:border-gray-950" />
                 {index !== timelineEvents.length - 1 && (
                   <div className="absolute h-full w-0.5 bg-gray-200 dark:bg-gray-700 left-0 top-0" />
                 )}

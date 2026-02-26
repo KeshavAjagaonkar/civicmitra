@@ -201,7 +201,7 @@ const AdminDashboard = () => {
 
       {/* Key Metrics */}
       <div className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="card-elevated relative overflow-hidden admin-theme">
+        <Card className="card-elevated relative overflow-hidden">
           <div className="absolute top-0 right-0 w-24 h-24 opacity-10">
             <div className="w-full h-full rounded-full bg-blue-500 transform translate-x-8 -translate-y-8" />
           </div>
