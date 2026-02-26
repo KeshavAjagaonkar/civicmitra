@@ -11,6 +11,7 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 import useApi from '@/hooks/useApi';
 import { useAuth } from '@/hooks/useAuth';
+import { STATUS_BADGE_VARIANT, PRIORITY_CLASSES, COMPLAINT_STATUSES } from '@/lib/constants';
 
 const ComplaintManagement = () => {
   const navigate = useNavigate();
@@ -82,14 +83,7 @@ const ComplaintManagement = () => {
     setFilteredComplaints(filtered);
   }, [complaints, searchTerm, statusFilter, priorityFilter, workerFilter]);
 
-  const getStatusVariant = (status) => {
-    const variants = {
-      'Submitted': 'secondary', 'Under Review': 'secondary', 'Needs Info': 'warning',
-      'In Progress': 'default', 'Transferred': 'default', 'Resolved': 'outline',
-      'Reopened': 'warning', 'Rejected': 'destructive', 'Closed': 'destructive',
-    };
-    return variants[status] || 'secondary';
-  };
+  const getStatusVariant = (status) => STATUS_BADGE_VARIANT[status] || 'secondary';
 
   const getStatusIcon = (status) => {
     const icons = { 'Submitted': Clock, 'In Progress': AlertCircle, 'Resolved': CheckCircle };
@@ -97,14 +91,8 @@ const ComplaintManagement = () => {
     return <Icon className="w-4 h-4" />;
   };
 
-  const getPriorityColor = (priority) => {
-    const colors = {
-      'High': 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800',
-      'Medium': 'bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800',
-      'Low': 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800'
-    };
-    return colors[priority] || 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700';
-  };
+  const getPriorityColor = (priority) =>
+    PRIORITY_CLASSES[priority] || 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700';
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -194,15 +182,9 @@ const ComplaintManagement = () => {
                 <SelectTrigger><SelectValue placeholder="All Status" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="Submitted">Submitted</SelectItem>
-                  <SelectItem value="Under Review">Under Review</SelectItem>
-                  <SelectItem value="Needs Info">Needs Info</SelectItem>
-                  <SelectItem value="In Progress">In Progress</SelectItem>
-                  <SelectItem value="Transferred">Transferred</SelectItem>
-                  <SelectItem value="Resolved">Resolved</SelectItem>
-                  <SelectItem value="Reopened">Reopened</SelectItem>
-                  <SelectItem value="Rejected">Rejected</SelectItem>
-                  <SelectItem value="Closed">Closed</SelectItem>
+                  {COMPLAINT_STATUSES.map(s => (
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

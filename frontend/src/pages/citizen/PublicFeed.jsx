@@ -12,9 +12,10 @@ import { useNavigate } from 'react-router-dom';
 
 // Lazy-load leaflet only in map view
 import 'leaflet/dist/leaflet.css';
+import { COMPLAINT_CATEGORIES, COMPLAINT_STATUSES } from '@/lib/constants';
 
-const CATEGORIES = ['All', 'Roads', 'Water Supply', 'Sanitation', 'Electricity', 'Public Health', 'Street Lights', 'Drainage', 'Garbage', 'Other'];
-const STATUSES = ['All', 'Submitted', 'In Progress', 'Resolved', 'Closed'];
+const CATEGORIES = ['All', ...COMPLAINT_CATEGORIES];
+const STATUSES = ['All', ...COMPLAINT_STATUSES];
 const SORTS = [
   { label: 'Priority (Highest First)', value: '-communityPriority.score' },
   { label: 'Newest First', value: 'newest' },

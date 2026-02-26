@@ -15,23 +15,14 @@ import { useDropzone } from 'react-dropzone';
 import useApi from '@/hooks/useApi';
 import { useAuth } from '@/hooks/useAuth';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/Dialog';
+import { COMPLAINT_CATEGORIES, COMPLAINT_PRIORITIES, PRIORITY_CLASSES } from '@/lib/constants';
 
 // Schema matching backend requirements
 const complaintSchema = z.object({
   title: z.string().min(1, { message: 'Title is required' }).max(100, { message: 'Title can not be more than 100 characters' }),
   description: z.string().min(1, { message: 'Description is required' }).max(1000, { message: 'Description can not be more than 1000 characters' }),
-  category: z.enum([
-    'Roads',
-    'Water Supply',
-    'Sanitation',
-    'Electricity',
-    'Public Health',
-    'Street Lights',
-    'Drainage',
-    'Garbage',
-    'Other',
-  ], { message: 'Please select a valid category' }),
-  priority: z.enum(['Low', 'Medium', 'High'], { message: 'Please select a priority level' }),
+  category: z.enum(COMPLAINT_CATEGORIES, { message: 'Please select a valid category' }),
+  priority: z.enum(COMPLAINT_PRIORITIES, { message: 'Please select a priority level' }),
   department: z.string().optional(),
   location: z.string().min(1, { message: 'Location is required' }),
   lng: z.number().optional(),

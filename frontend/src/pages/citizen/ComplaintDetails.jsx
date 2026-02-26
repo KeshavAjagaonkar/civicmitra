@@ -11,6 +11,7 @@ import FormFieldBox from '@/components/FormFieldBox';
 import useApi from '@/hooks/useApi';
 import { useToast } from '@/components/ui/use-toast';
 import { ArrowLeft, Star, Sparkles, AlertCircle, MapPin, TrendingUp } from 'lucide-react';
+import { STATUS_BADGE_VARIANT, PRIORITY_CLASSES } from '@/lib/constants';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/Dialog';
 import { useAuth } from '@/hooks/useAuth';
 import 'leaflet/dist/leaflet.css';
@@ -74,23 +75,7 @@ const LocationMap = ({ complaint }) => {
   );
 };
 
-const statusVariant = {
-  Submitted: 'secondary',
-  'Under Review': 'secondary',
-  'Needs Info': 'warning',
-  'In Progress': 'default',
-  Resolved: 'outline',
-  Reopened: 'warning',
-  Transferred: 'default',
-  Rejected: 'destructive',
-  Closed: 'destructive',
-};
-
-const priorityStyles = {
-  High: 'bg-red-100 text-red-800 border-red-200 hover:bg-red-100',
-  Medium: 'bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-100',
-  Low: 'bg-green-100 text-green-800 border-green-200 hover:bg-green-100',
-};
+// statusVariant and priorityStyles now sourced from @/lib/constants
 
 const ComplaintDetails = () => {
   const { id } = useParams();
@@ -356,7 +341,7 @@ const ComplaintDetails = () => {
                     </SelectContent>
                   </Select>
                 ) : (
-                  <Badge variant={statusVariant[complaint.status] || 'secondary'}>{complaint.status}</Badge>
+                  <Badge variant={STATUS_BADGE_VARIANT[complaint.status] || 'secondary'}>{complaint.status}</Badge>
                 )}
               </div>
               {/* Rejection reason field — shown only when Rejected is selected by staff/admin */}
@@ -374,7 +359,7 @@ const ComplaintDetails = () => {
               )}
               <div className="flex justify-between items-center">
                 <strong>Priority:</strong>
-                <Badge variant="outline" className={priorityStyles[complaint.priority]}>
+                <Badge variant="outline" className={PRIORITY_CLASSES[complaint.priority]}>
                   {complaint.priority}
                 </Badge>
               </div>

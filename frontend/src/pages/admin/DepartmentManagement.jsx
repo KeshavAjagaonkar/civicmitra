@@ -13,12 +13,7 @@ import { Textarea } from '@/components/ui/Textarea';
 import { MoreHorizontal, PlusCircle, Loader2, AlertTriangle, Edit, Trash2 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import useApi from '@/hooks/useApi';
-
-// All complaint categories — must stay in sync with backend/models/Department.js
-const ALL_CATEGORIES = [
-  'Roads', 'Water Supply', 'Sanitation', 'Electricity',
-  'Public Health', 'Street Lights', 'Drainage', 'Garbage', 'Other',
-];
+import { COMPLAINT_CATEGORIES } from '@/lib/constants';
 
 const DepartmentManagement = () => {
   const { request, isLoading: isApiLoading } = useApi();
@@ -185,7 +180,7 @@ const DepartmentManagement = () => {
               <Label>Handles Complaint Categories</Label>
               <p className="text-xs text-gray-500">AI auto-routing sends complaints of these types to this department.</p>
               <div className="grid grid-cols-2 gap-2 pt-1">
-                {ALL_CATEGORIES.map(cat => (
+                {COMPLAINT_CATEGORIES.map(cat => (
                   <label key={cat} className="flex items-center gap-2 cursor-pointer select-none">
                     <input
                       type="checkbox"
