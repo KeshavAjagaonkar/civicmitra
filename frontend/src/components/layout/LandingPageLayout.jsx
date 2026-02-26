@@ -33,6 +33,9 @@ const LandingHeader = () => {
                     <a href="#how-it-works" className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">How It Works</a>
                     <a href="#departments" className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Departments</a>
                     <a href="#faq" className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">FAQ</a>
+                    <Link to="/transparency" className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors font-medium">
+                        Transparency
+                    </Link>
                 </nav>
 
                 {/* Desktop Auth Buttons */}
@@ -102,6 +105,14 @@ const LandingHeader = () => {
                                 FAQ
                             </a>
                         </nav>
+
+                            <Link
+                                to="/transparency"
+                                className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors py-2 font-medium"
+                                onClick={() => setIsMobileMenuOpen(false)}
+                            >
+                                Transparency
+                            </Link>
 
                         {/* Mobile Auth Buttons */}
                         <div className="flex flex-col space-y-2 pt-4 border-t border-gray-200 dark:border-gray-700">

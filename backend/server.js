@@ -147,6 +147,7 @@ app.use('/api/feedback', require('./routes/feedback'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/departments', require('./routes/departments'));
 app.use('/api/chats', require('./routes/chats'));
+app.use('/api/public', require('./routes/public'));
 
 // Health check endpoint
 app.get('/', (req, res) => {

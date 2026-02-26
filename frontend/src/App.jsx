@@ -22,6 +22,7 @@ import UnifiedLogin from './pages/auth/UnifiedLogin';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import ResetPassword from './pages/auth/ResetPassword';
 import NotFound from './pages/NotFound';
+import PublicTransparency from './pages/PublicTransparency';
 
 // Unified Profile Page (Used for all roles)
 import ProfilePage from './pages/ProfilePage';
@@ -74,6 +75,9 @@ function App() {
           <Route path="/" element={<PublicRoute><LandingPageLayout /></PublicRoute>}>
             <Route index element={<LandingPage />} />
           </Route>
+
+          {/* Transparency dashboard — fully public, no login, own full-page layout */}
+          <Route path="/transparency" element={<PublicTransparency />} />
 
           {/* Authentication Routes */}
           <Route element={<PublicRoute><AuthLayout /></PublicRoute>}>
