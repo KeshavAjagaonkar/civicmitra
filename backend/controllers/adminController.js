@@ -2,8 +2,10 @@ const Complaint = require('../models/Complaint');
 const User = require('../models/User');
 const Department = require('../models/Department');
 const SystemAlert = require('../models/SystemAlert');
+const Chat = require('../models/Chat');
 const asyncHandler = require('../middleware/asyncHandler');
 const ErrorResponse = require('../utils/errorResponse');
+const { cleanupComplaintFiles } = require('../utils/cleanupFiles');
 
 // @desc    Create a new user (DepartmentStaff or Worker)
 // @route   POST /api/admin/users
@@ -490,6 +492,12 @@ exports.deleteComplaint = asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse(`Complaint not found with id of ${req.params.id}`, 404));
   }
 
+  // Clean up uploaded files (Cloudinary or local disk) before deleting the record
+  await cleanupComplaintFiles(complaint);
+
+  // Delete the associated Chat document — it has no use without the complaint
+  await Chat.deleteOne({ complaintId: complaint._id });
+
   await complaint.deleteOne();
 
   res.status(200).json({
@@ -544,6 +552,15 @@ exports.bulkDeleteComplaints = asyncHandler(async (req, res, next) => {
   if (!complaintIds || !Array.isArray(complaintIds) || complaintIds.length === 0) {
     return next(new ErrorResponse('Please provide an array of complaint IDs', 400));
   }
+
+  // Fetch complaints to get their file references before deletion
+  const complaints = await Complaint.find({ _id: { $in: complaintIds } });
+
+  // Clean up all attached files in parallel
+  await Promise.all(complaints.map(c => cleanupComplaintFiles(c)));
+
+  // Clean up all associated Chat documents
+  await Chat.deleteMany({ complaintId: { $in: complaintIds } });
 
   const result = await Complaint.deleteMany({ _id: { $in: complaintIds } });
 
