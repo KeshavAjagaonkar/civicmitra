@@ -17,8 +17,6 @@ if (isEmailConfigured()) {
     }
   });
 
-} else {
-
 }
 
 /**
@@ -103,7 +101,7 @@ exports.sendWelcomeEmail = async (user) => {
     </html>
   `;
 
-  return await this.sendEmail(user.email, subject, html);
+  return await exports.sendEmail(user.email, subject, html);
 };
 
 /**
@@ -157,7 +155,7 @@ exports.sendComplaintUpdateEmail = async (user, complaint, message) => {
     </html>
   `;
 
-  return await this.sendEmail(user.email, subject, html);
+  return await exports.sendEmail(user.email, subject, html);
 };
 
 /**
@@ -215,7 +213,7 @@ exports.sendWorkerAssignmentEmail = async (user, complaint, worker) => {
     </html>
   `;
 
-  return await this.sendEmail(user.email, subject, html);
+  return await exports.sendEmail(user.email, subject, html);
 };
 
 module.exports = exports;

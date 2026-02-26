@@ -62,7 +62,7 @@ exports.createComplaint = asyncHandler(async (req, res, next) => {
     type: 'Point',
     address: location
   };
-  
+
   if (lng && lat) {
     locationData.coordinates = [parseFloat(lng), parseFloat(lat)];
   } else {
@@ -88,7 +88,7 @@ exports.createComplaint = asyncHandler(async (req, res, next) => {
 
   // Generate AI summary (runs in background, doesn't block complaint creation)
   try {
-    const summary = await summarizeComplaint(title, description, location, classification.category || category);
+    const summary = await summarizeComplaint(title, description, locationData.address, classification.category || category);
     if (summary) {
       newComplaintData.aiSummary = summary;
     }
@@ -112,7 +112,7 @@ exports.createComplaint = asyncHandler(async (req, res, next) => {
       });
 
       if (departmentStaff) {
-        complaint.staffId = departmentStaff._id;
+        complaint.departmentStaffId = departmentStaff._id;
         await complaint.save();
 
         // Notify staff about new complaint
@@ -678,7 +678,7 @@ exports.checkSimilarComplaints = asyncHandler(async (req, res, next) => {
     status: { $nin: ['Resolved', 'Closed'] },
     isPublic: true
   };
-  
+
   if (category && category !== 'Other') {
     filter.category = category;
   }
@@ -688,7 +688,7 @@ exports.checkSimilarComplaints = asyncHandler(async (req, res, next) => {
     filter['location.coordinates'] = {
       $nearSphere: {
         $geometry: { type: 'Point', coordinates: [parseFloat(lng), parseFloat(lat)] },
-        $maxDistance: 5000 
+        $maxDistance: 5000
       }
     };
   }
@@ -784,10 +784,10 @@ exports.upvoteComplaint = asyncHandler(async (req, res, next) => {
 
   // Use atomic updates to prevent race conditions.
   const updatedComplaint = await Complaint.findOneAndUpdate(
-    { 
-      _id: complaintId, 
-      isPublic: true, 
-      'upvotes.supporters.userId': { $ne: userId } 
+    {
+      _id: complaintId,
+      isPublic: true,
+      'upvotes.supporters.userId': { $ne: userId }
     },
     {
       $addToSet: { 'upvotes.supporters': { userId: userId, supportedAt: new Date() } },
@@ -807,9 +807,9 @@ exports.upvoteComplaint = asyncHandler(async (req, res, next) => {
   // Recalculate community priority based on new values
   const priority = calculateCommunityPriority(updatedComplaint);
   updatedComplaint.communityPriority = priority;
-  
+
   await Complaint.updateOne(
-    { _id: complaintId }, 
+    { _id: complaintId },
     { $set: { communityPriority: priority } }
   );
 
@@ -830,9 +830,9 @@ exports.removeUpvote = asyncHandler(async (req, res, next) => {
   const userId = req.user.id;
 
   const updatedComplaint = await Complaint.findOneAndUpdate(
-    { 
-      _id: complaintId, 
-      'upvotes.supporters.userId': userId 
+    {
+      _id: complaintId,
+      'upvotes.supporters.userId': userId
     },
     {
       $pull: { 'upvotes.supporters': { userId: userId } },
@@ -852,7 +852,7 @@ exports.removeUpvote = asyncHandler(async (req, res, next) => {
   updatedComplaint.communityPriority = priority;
 
   await Complaint.updateOne(
-    { _id: complaintId }, 
+    { _id: complaintId },
     { $set: { communityPriority: priority } }
   );
 

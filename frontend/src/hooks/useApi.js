@@ -27,8 +27,6 @@ const useApi = () => {
         const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
         const fullUrl = url.startsWith('http') ? url : `${baseUrl}${url}`;
 
-        console.log('API Request:', { method, url: fullUrl, hasBody: !!body, isFormData });
-
         const fetchOptions = {
           method,
           headers,

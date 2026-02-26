@@ -5,7 +5,7 @@ const fs = require('fs');
 let storage;
 
 // Try Cloudinary first, fallback to local storage if credentials are missing
-const hasCloudinaryConfig =
+let hasCloudinaryConfig =
   !!process.env.CLOUDINARY_CLOUD_NAME &&
   !!process.env.CLOUDINARY_API_KEY &&
   !!process.env.CLOUDINARY_API_SECRET;

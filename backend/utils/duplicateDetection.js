@@ -6,12 +6,9 @@ const axios = require('axios');
 const parseGeminiJson = (text) => {
     let cleanedText = text.trim();
     if (cleanedText.startsWith('```json')) {
-      cleanedText = cleanedText.replace(/```json
-?/g, '').replace(/```
-?/g, '');
+        cleanedText = cleanedText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
     } else if (cleanedText.startsWith('```')) {
-      cleanedText = cleanedText.replace(/```
-?/g, '');
+        cleanedText = cleanedText.replace(/```\n?/g, '');
     }
     return JSON.parse(cleanedText);
 };
@@ -49,7 +46,7 @@ const jaccardSimilarity = (tokens1, tokens2) => {
  */
 const findSimilarWithAI = async (title, description, candidates) => {
     if (!candidates || candidates.length === 0) return [];
-    
+
     // Fallback immediately if no key
     if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'your_gemini_api_key_here') {
         throw new Error('Gemini API key missing');
@@ -60,8 +57,7 @@ const findSimilarWithAI = async (title, description, candidates) => {
     ID: ${c._id}
     Title: ${c.title}
     Description: ${c.description}
-    `).join('
-');
+    `).join('\n');
 
     const prompt = `You are a duplicate detection system for a civic complaint platform. 
 Compare the NEW COMPLAINT against the list of EXISTING COMPLAINTS.
@@ -111,7 +107,6 @@ Only include matches with similarity >= 80. If none, return an empty array [].
             }));
 
     } catch (error) {
-        console.error('Gemini similarity check failed, falling back to keywords:', error.message);
         throw error; // Throw so the caller can trigger the fallback
     }
 };
@@ -123,7 +118,7 @@ const findSimilarWithKeywords = (title, description, candidates) => {
     if (!candidates || candidates.length === 0) return [];
 
     const newTokens = tokenize(`${title} ${description}`);
-    
+
     const results = candidates.map(c => {
         const candidateTokens = tokenize(`${c.title} ${c.description}`);
         const similarity = jaccardSimilarity(newTokens, candidateTokens);
