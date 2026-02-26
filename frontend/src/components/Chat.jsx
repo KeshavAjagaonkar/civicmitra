@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Textarea } from './ui/Textarea';
 import { Button } from './ui/Button';
-import { Send } from 'lucide-react';
+import { Send, ChevronUp } from 'lucide-react';
 import { ScrollArea } from './ui/ScrollArea';
 import { useAuth } from '@/hooks/useAuth';
 import { useSocket } from '@/context/SocketContext';
@@ -17,7 +17,11 @@ const Chat = ({ complaintId }) => {
   const { toast } = useToast();
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [isLoadingEarlier, setIsLoadingEarlier] = useState(false);
   const messagesEndRef = useRef(null);
+  const scrollAreaRef = useRef(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -27,27 +31,41 @@ const Chat = ({ complaintId }) => {
     scrollToBottom();
   }, [messages]);
 
-  // Fetch chat messages on mount
+  // Fetch chat messages — page 1 = most recent 50 messages
   useEffect(() => {
     const fetchChat = async () => {
       if (!complaintId) return;
-
       try {
-        const result = await request(`/api/chats/${complaintId}`);
+        const result = await request(`/api/chats/${complaintId}?page=1`);
         if (result.success) {
           setMessages(result.data.messages || []);
+          setTotalPages(result.pagination?.totalPages || 1);
+          setCurrentPage(1);
         }
       } catch (err) {
-        toast({
-          title: 'Failed to load chat',
-          description: err.message,
-          variant: 'destructive'
-        });
+        toast({ title: 'Failed to load chat', description: err.message, variant: 'destructive' });
       }
     };
-
     fetchChat();
   }, [complaintId, request, toast]);
+
+  // Load older messages (prepend to list, preserve scroll position)
+  const loadEarlierMessages = async () => {
+    if (currentPage >= totalPages || isLoadingEarlier) return;
+    setIsLoadingEarlier(true);
+    try {
+      const nextPage = currentPage + 1;
+      const result = await request(`/api/chats/${complaintId}?page=${nextPage}`);
+      if (result.success) {
+        setMessages(prev => [...(result.data.messages || []), ...prev]);
+        setCurrentPage(nextPage);
+      }
+    } catch (err) {
+      toast({ title: 'Failed to load earlier messages', description: err.message, variant: 'destructive' });
+    } finally {
+      setIsLoadingEarlier(false);
+    }
+  };
 
   // Socket.IO: Join complaint room and listen for messages
   useEffect(() => {
@@ -155,6 +173,19 @@ const Chat = ({ complaintId }) => {
       <CardContent className="flex-1 p-4 overflow-hidden">
         <ScrollArea className="h-[calc(100%-60px)] pr-4">
           <div className="space-y-4">
+            {/* Load earlier messages button — shown when older pages exist */}
+            {currentPage < totalPages && (
+              <div className="flex justify-center pb-2">
+                <button
+                  onClick={loadEarlierMessages}
+                  disabled={isLoadingEarlier}
+                  className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 disabled:opacity-50"
+                >
+                  <ChevronUp className="w-3 h-3" />
+                  {isLoadingEarlier ? 'Loading…' : 'Load earlier messages'}
+                </button>
+              </div>
+            )}
             {messages.length === 0 ? (
               <div className="text-center text-gray-500 py-8">
                 No messages yet. Start the conversation!

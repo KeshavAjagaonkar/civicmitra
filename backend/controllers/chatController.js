@@ -4,11 +4,16 @@ const asyncHandler = require('../middleware/asyncHandler');
 const ErrorResponse = require('../utils/errorResponse');
 const { getSocketIO } = require('../utils/socket');
 
-// @desc    Get chat for a complaint
-// @route   GET /api/chats/:complaintId
+// Number of messages returned per page.
+// Keeps the initial chat load fast regardless of conversation length.
+const MESSAGES_PER_PAGE = 50;
+
+// @desc    Get chat for a complaint (paginated)
+// @route   GET /api/chats/:complaintId?page=1
 // @access  Private
 exports.getChat = asyncHandler(async (req, res, next) => {
     const { complaintId } = req.params;
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
 
     // First, find the complaint to verify authorization
     const complaint = await Complaint.findById(complaintId);
@@ -28,24 +33,60 @@ exports.getChat = asyncHandler(async (req, res, next) => {
     }
 
     // Find the chat, or create it if it doesn't exist
-    let chat = await Chat.findOne({ complaintId }).populate('messages.sender', 'name role');
+    let chat = await Chat.findOne({ complaintId });
 
     if (!chat) {
-
         chat = await Chat.create({
             complaintId: complaintId,
             citizenId: complaint.citizenId,
-            staffId: complaint.departmentStaffId, // Pre-populate staff if assigned
+            staffId: complaint.departmentStaffId,
             messages: [{
-                sender: null, // System message
+                sender: null,
                 message: 'Welcome! A staff member will be with you shortly. You can add more details here.'
             }]
         });
-        // Repopulate to include the sender details in the response
-        chat = await chat.populate('messages.sender', 'name role');
     }
 
-    res.status(200).json({ success: true, data: chat });
+    const totalMessages = chat.messages.length;
+    const totalPages = Math.ceil(totalMessages / MESSAGES_PER_PAGE);
+
+    // Slice from the end: page 1 = last 50, page 2 = 51-100 from end, etc.
+    // This way the user always sees the most recent messages first.
+    const endIndex = totalMessages - (page - 1) * MESSAGES_PER_PAGE;
+    const startIndex = Math.max(0, endIndex - MESSAGES_PER_PAGE);
+    const pageMessages = chat.messages.slice(startIndex, endIndex);
+
+    // Manually populate sender info for the sliced messages
+    const User = require('../models/User');
+    const senderIds = [...new Set(
+        pageMessages.map(m => m.sender?.toString()).filter(Boolean)
+    )];
+    const senders = await User.find({ _id: { $in: senderIds } }).select('name role').lean();
+    const senderMap = Object.fromEntries(senders.map(s => [s._id.toString(), s]));
+
+    const populatedMessages = pageMessages.map(m => ({
+        _id: m._id,
+        message: m.message,
+        timestamp: m.timestamp,
+        sender: m.sender ? (senderMap[m.sender.toString()] || m.sender) : null,
+    }));
+
+    res.status(200).json({
+        success: true,
+        data: {
+            _id: chat._id,
+            complaintId: chat.complaintId,
+            citizenId: chat.citizenId,
+            staffId: chat.staffId,
+            messages: populatedMessages,
+        },
+        pagination: {
+            page,
+            totalPages,
+            totalMessages,
+            hasMore: page < totalPages,
+        },
+    });
 });
 
 // @desc    Send a message
