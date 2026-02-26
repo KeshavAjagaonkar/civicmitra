@@ -28,17 +28,27 @@ import useApi from '@/hooks/useApi';
 import { useToast } from '@/components/ui/use-toast';
 
 const COLORS = {
-  primary: '#2563eb',
-  success: '#22c55e',
-  warning: '#f59e0b',
-  danger: '#ef4444',
-  purple: '#a78bfa',
-  teal: '#14b8a6',
-  pink: '#ec4899',
-  indigo: '#6366f1'
+  primary: '#0d9488',   // deep teal
+  success: '#059669',   // emerald
+  warning: '#d97706',   // warm amber
+  danger: '#e11d48',    // rose
+  purple: '#7c3aed',    // vivid purple
+  teal: '#0891b2',      // cyan
+  pink: '#db2777',      // fuchsia pink
+  indigo: '#4f46e5',    // deep indigo
+  coral: '#f97316',     // coral orange
+  slate: '#475569',     // slate
 };
 
-const CHART_COLORS = [COLORS.primary, COLORS.teal, COLORS.warning, COLORS.purple, COLORS.pink, COLORS.success];
+const CHART_COLORS = ['#0d9488', '#7c3aed', '#d97706', '#e11d48', '#0891b2', '#059669', '#f97316', '#4f46e5'];
+
+// Modern tooltip style (no border, subtle shadow)
+const tooltipStyle = {
+  contentStyle: { background: '#1e293b', border: 'none', borderRadius: '12px', color: '#f1f5f9', fontSize: '13px', padding: '10px 14px', boxShadow: '0 8px 24px rgba(0,0,0,0.25)' },
+  itemStyle: { color: '#f1f5f9' },
+  labelStyle: { color: '#94a3b8', fontWeight: 600, marginBottom: 4 },
+  cursor: { fill: 'rgba(13, 148, 136, 0.08)' },
+};
 
 const SystemAnalytics = () => {
   const { request } = useApi();
@@ -91,8 +101,8 @@ const SystemAnalytics = () => {
     name: item._id || 'Unknown',
     value: item.count || 0,
     fill: item._id === 'Resolved' ? COLORS.success :
-          item._id === 'In Progress' ? COLORS.warning :
-          item._id === 'Submitted' ? COLORS.primary :
+      item._id === 'In Progress' ? COLORS.warning :
+        item._id === 'Submitted' ? COLORS.primary :
           COLORS.danger
   }));
 
@@ -238,13 +248,11 @@ const SystemAnalytics = () => {
             {statusChartData.length > 0 ? (
               <div style={{ width: '100%', height: 300 }}>
                 <ResponsiveContainer>
-                  <BarChart data={statusChartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="value" name="Complaints" radius={[8, 8, 0, 0]}>
+                  <BarChart data={statusChartData} barCategoryGap="20%">
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 13 }} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                    <Tooltip {...tooltipStyle} />
+                    <Bar dataKey="value" name="Complaints" radius={[10, 10, 0, 0]}>
                       {statusChartData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.fill} />
                       ))}
@@ -274,13 +282,11 @@ const SystemAnalytics = () => {
           <CardContent>
             <div style={{ width: '100%', height: 300 }}>
               <ResponsiveContainer>
-                <BarChart data={departmentChartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="complaints" fill={COLORS.purple} name="Total Complaints" radius={[8, 8, 0, 0]} />
+                <BarChart data={departmentChartData} barCategoryGap="20%">
+                  <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                  <Tooltip {...tooltipStyle} />
+                  <Bar dataKey="complaints" fill={COLORS.purple} name="Total Complaints" radius={[10, 10, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -340,8 +346,8 @@ const SystemAnalytics = () => {
                           <Badge
                             variant={
                               performanceScore === 'Excellent' ? 'default' :
-                              performanceScore === 'Good' ? 'secondary' :
-                              'outline'
+                                performanceScore === 'Good' ? 'secondary' :
+                                  'outline'
                             }
                           >
                             {performanceScore}

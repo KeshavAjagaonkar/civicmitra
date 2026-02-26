@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -254,6 +254,11 @@ const UnifiedLogin = () => {
                 </Button>
               </div>
               {errors.password && <p className="text-sm text-red-500">{errors.password.message}</p>}
+              {mode === 'login' && (
+                <div className="text-right">
+                  <Link to="/forgot-password" className="text-sm text-blue-600 hover:underline">Forgot Password?</Link>
+                </div>
+              )}
             </div>
 
             {mode === 'register' && (

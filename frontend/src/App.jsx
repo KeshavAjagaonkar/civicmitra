@@ -19,6 +19,8 @@ import ProtectedRoute, {
 // Public & Auth
 import LandingPage from './pages/LandingPage';
 import UnifiedLogin from './pages/auth/UnifiedLogin';
+import ForgotPassword from './pages/auth/ForgotPassword';
+import ResetPassword from './pages/auth/ResetPassword';
 import NotFound from './pages/NotFound';
 
 // Unified Profile Page (Used for all roles)
@@ -76,7 +78,8 @@ function App() {
           {/* Authentication Routes */}
           <Route element={<PublicRoute><AuthLayout /></PublicRoute>}>
             <Route path="/auth" element={<UnifiedLogin />} />
-            {/* The Forgot Password link inside UnifiedLogin will handle navigation */}
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password/:token" element={<ResetPassword />} />
           </Route>
 
           {/* Protected App Routes */}
