@@ -17,7 +17,7 @@ const Navbar = ({ toggleSidebar }) => {
   const { isDarkMode, toggleDarkMode } = useTheme();
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
   const { user, logout } = useAuth();
-  
+
   // A handler to navigate to the correct complaint page based on user role
   const handleNotificationClick = (notification) => {
     markAsRead(notification._id);
@@ -72,7 +72,7 @@ const Navbar = ({ toggleSidebar }) => {
   };
 
   const getLogoPath = () => {
-     switch (user?.role) {
+    switch (user?.role) {
       case 'admin': return '/admin';
       case 'staff':
         return user?.department?.slug
@@ -90,7 +90,7 @@ const Navbar = ({ toggleSidebar }) => {
       <div className="container mx-auto flex items-center justify-between h-16 px-4 md:px-8">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" className="lg:hidden" onClick={toggleSidebar}>
-              <Menu className="h-6 w-6" />
+            <Menu className="h-6 w-6" />
           </Button>
           <Link to={getLogoPath()} className="text-2xl font-bold text-blue-600">
             CivicMitra
@@ -114,15 +114,15 @@ const Navbar = ({ toggleSidebar }) => {
                 <Bell className="h-5 w-5" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-80 md:w-96 glass-card p-0 rounded-2xl" align="end">
+            <PopoverContent className="w-80 md:w-96 glass-card p-0 rounded-xl" align="end">
               <div className="p-4 border-b border-gray-200 dark:border-gray-700">
                 <div className="flex justify-between items-center">
-                   <h4 className="font-semibold leading-none">Notifications</h4>
-                   {unreadCount > 0 && (
-                     <Button variant="link" size="sm" className="p-0 h-auto" onClick={markAllAsRead}>Mark all as read</Button>
-                   )}
+                  <h4 className="font-semibold leading-none">Notifications</h4>
+                  {unreadCount > 0 && (
+                    <Button variant="link" size="sm" className="p-0 h-auto" onClick={markAllAsRead}>Mark all as read</Button>
+                  )}
                 </div>
-                 <p className="text-sm text-muted-foreground mt-1">You have {unreadCount} unread messages.</p>
+                <p className="text-sm text-muted-foreground mt-1">You have {unreadCount} unread messages.</p>
               </div>
               <div className="max-h-80 overflow-y-auto p-2">
                 {notifications.length > 0 ? (
@@ -138,7 +138,7 @@ const Navbar = ({ toggleSidebar }) => {
                     >
                       <div className="mt-1">
                         {!notification.read && (
-                           <span className="block h-2.5 w-2.5 rounded-full bg-blue-500" />
+                          <span className="block h-2.5 w-2.5 rounded-full bg-blue-500" />
                         )}
                       </div>
                       <div className="space-y-1">
@@ -165,7 +165,7 @@ const Navbar = ({ toggleSidebar }) => {
                 <User className="h-5 w-5" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl" align="end" forceMount>
+            <DropdownMenuContent className="w-56 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg" align="end" forceMount>
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
                   <p className="text-sm font-medium leading-none">{user?.name}</p>
