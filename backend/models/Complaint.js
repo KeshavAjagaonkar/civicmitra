@@ -136,6 +136,10 @@ const ComplaintSchema = new mongoose.Schema({
     type: Date,
   },
   timeline: [TimelineEventSchema],
+  isAppealed: {
+    type: Boolean,
+    default: false,
+  },
   aiClassification: {
     confidence: {
       type: Number,

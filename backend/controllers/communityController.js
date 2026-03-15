@@ -13,20 +13,45 @@ exports.getPublicComplaints = asyncHandler(async (req, res, next) => {
   const limit = parseInt(req.query.limit, 10) || 10;
   const skip = (page - 1) * limit;
 
-  // Build filter
-  const filter = { isPublic: true };
-  if (req.query.category) filter.category = req.query.category;
-  if (req.query.status) filter.status = req.query.status;
-
-  // Build sort
+  // Build Sort
   let sort = { 'communityPriority.score': -1 }; // Default: highest priority first
   if (req.query.sort === 'newest') sort = { createdAt: -1 };
   if (req.query.sort === 'oldest') sort = { createdAt: 1 };
   if (req.query.sort === 'most-upvoted') sort = { 'upvotes.count': -1 };
 
+  // Build Filter
+  const isAudit = req.query.audit === 'true';
+  const filter = {
+    isPublic: true,
+    status: isAudit ? { $in: ['Rejected', 'Closed'] } : { $nin: ['Rejected', 'Closed'] }
+  };
+
+  if (req.query.category) filter.category = req.query.category;
+  if (req.query.status && !isAudit) filter.status = req.query.status;
+
+  // Geospatial filter using $geoWithin/$centerSphere
+  // IMPORTANT: We use $geoWithin (NOT $nearSphere) here because:
+  // - $nearSphere implicitly sorts by distance and conflicts with Mongoose's .sort()
+  //   causing mongoose to OVERRIDE the geo sort, making the radius limit have no effect.
+  // - $geoWithin is a pure FILTER (like a "box") with no implicit sort.
+  //   It finds all documents WITHIN a given circular area and then lets us apply
+  //   any sort we want on top of it (e.g. priority score, newest, etc.).
+  if (req.query.lat && req.query.lng) {
+    const lat = parseFloat(req.query.lat);
+    const lng = parseFloat(req.query.lng);
+    const radiusInMeters = parseInt(req.query.radius, 10) || 5000; // default 5km
+    const radiusInRadians = radiusInMeters / 6378100; // Earth's radius in meters
+
+    filter['location.coordinates'] = {
+      $geoWithin: {
+        $centerSphere: [[lng, lat], radiusInRadians],
+      },
+    };
+  }
+
   const [complaints, total] = await Promise.all([
     Complaint.find(filter)
-      .select('-upvotes.supporters') // Privacy: don't expose who supported what
+      .select('-upvotes.supporters')
       .populate('citizenId', 'name')
       .populate('department', 'name')
       .sort(sort)
@@ -68,21 +93,21 @@ exports.getPublicComplaints = asyncHandler(async (req, res, next) => {
 exports.getNearbyComplaints = asyncHandler(async (req, res, next) => {
   const lat = parseFloat(req.query.lat);
   const lng = parseFloat(req.query.lng);
-  const radius = parseInt(req.query.radius, 10) || 2000;
+  const radiusInMeters = parseInt(req.query.radius, 10) || 2000; // default 2km
 
   if (!lat || !lng) {
     return next(new ErrorResponse('Please provide lat and lng coordinates', 400));
   }
 
+  // Convert radius from meters to radians for $centerSphere
+  const radiusInRadians = radiusInMeters / 6378100;
+
   const complaints = await Complaint.find({
     isPublic: true,
+    status: { $nin: ['Rejected', 'Closed'] },
     'location.coordinates': {
-      $nearSphere: {
-        $geometry: {
-          type: 'Point',
-          coordinates: [lng, lat],
-        },
-        $maxDistance: radius,
+      $geoWithin: {
+        $centerSphere: [[lng, lat], radiusInRadians],
       },
     },
   })
@@ -193,6 +218,12 @@ exports.upvoteComplaint = asyncHandler(async (req, res, next) => {
     const exists = await Complaint.findById(complaintId);
     if (!exists) return next(new ErrorResponse('Complaint not found', 404));
     if (!exists.isPublic) return next(new ErrorResponse('This complaint is not public', 403));
+    
+    // Check if it's already closed/resolved before assuming they already voted
+    if (['Resolved', 'Closed', 'Rejected'].includes(exists.status)) {
+      return next(new ErrorResponse(`Cannot upvote a complaint that is ${exists.status}`, 400));
+    }
+
     // If it exists and is public, but not updated, user already supported
     return res.status(409).json({ success: false, message: 'You have already supported this complaint' });
   }
@@ -237,6 +268,11 @@ exports.removeUpvote = asyncHandler(async (req, res, next) => {
   if (!updatedComplaint) {
     const exists = await Complaint.findById(complaintId);
     if (!exists) return next(new ErrorResponse('Complaint not found', 404));
+
+    if (['Resolved', 'Closed', 'Rejected'].includes(exists.status)) {
+      return next(new ErrorResponse(`Cannot modify upvotes on a complaint that is ${exists.status}`, 400));
+    }
+
     return res.status(409).json({ success: false, message: 'You have not supported this complaint' });
   }
 

@@ -147,10 +147,41 @@ const PublicFeed = () => {
   const [status, setStatus] = useState('All');
   const [sort, setSort] = useState('-communityPriority.score');
   const [view, setView] = useState('list'); // 'list' | 'map'
+  const [isAuditLog, setIsAuditLog] = useState(false);
+  const [isNearMe, setIsNearMe] = useState(false); // Default to city-wide
+  const [userLocation, setUserLocation] = useState(null);
+
+  // Try to get user location for localized feed
+  useEffect(() => {
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+        },
+        (error) => console.log('Geolocation not granted, showing city-wide feed')
+      );
+    }
+  }, []);
 
   const { request } = useApi();
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  // RADIUS LOGIC:
+  // - Audit Log: no geo filtering — must show everything for full transparency
+  // - Active Feed (default): 25km — scopes to same municipal corporation
+  // - Near Me (toggle): 5km — hyper-local neighborhood view
+  const MUNICIPAL_RADIUS = 25000;  // 25km — covers most municipal corps
+  const NEAR_ME_RADIUS   =  5000;  //  5km — hyperlocal
+
+  const getActiveRadius = () => {
+    if (isAuditLog) return null;          // no filter for audit log
+    if (isNearMe) return NEAR_ME_RADIUS;  // near me pressed
+    return MUNICIPAL_RADIUS;              // always default to municipal scope
+  };
 
   const fetchComplaints = useCallback(async () => {
     try {
@@ -158,6 +189,13 @@ const PublicFeed = () => {
       let url = `/api/complaints/public?page=${page}&limit=10&sort=${sort}`;
       if (category !== 'All') url += `&category=${encodeURIComponent(category)}`;
       if (status !== 'All') url += `&status=${encodeURIComponent(status)}`;
+      if (isAuditLog) url += '&audit=true';
+
+      // Apply geo-scope if we have user location AND are not in audit log
+      const radius = getActiveRadius();
+      if (userLocation && radius) {
+        url += `&lat=${userLocation.lat}&lng=${userLocation.lng}&radius=${radius}`;
+      }
 
       const res = await request(url);
       if (res.success) {
@@ -171,7 +209,7 @@ const PublicFeed = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, category, status, sort, request]);
+  }, [page, category, status, sort, isAuditLog, isNearMe, userLocation, request]);
 
   useEffect(() => {
     fetchComplaints();
@@ -181,32 +219,84 @@ const PublicFeed = () => {
     navigate(user?.slug ? `/${user.slug}/complaints/${id}` : `/complaints/${id}`);
   };
 
+  // Dynamic subtitle
+  const getSubtitle = () => {
+    if (isAuditLog) return 'Transparent record of all rejected and closed complaints.';
+    if (!userLocation)  return 'Showing all public complaints (enable location for local results).';
+    if (isNearMe)       return 'Hyperlocal view — complaints within 5km of your position.';
+    return 'Showing complaints within your Municipal Corporation (25km radius).';
+  };
+
   return (
     <div className="container mx-auto p-4 space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Public Feed</h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">Discover and support civic issues in your community.</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+            {isAuditLog ? 'Public Audit Log' : 'Public Feed'}
+          </h1>
+          <p className="text-gray-500 dark:text-gray-400 mt-1">
+            {getSubtitle()}
+          </p>
         </div>
 
-        {/* View toggle */}
-        <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <button
-            onClick={() => setView('list')}
-            className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors ${view === 'list' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
-          >
-            <List className="w-4 h-4" />
-            List
-          </button>
-          <button
-            onClick={() => setView('map')}
-            className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors ${view === 'map' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
-          >
-            <MapIcon className="w-4 h-4" />
-            Map
-          </button>
+        {/* View toggles */}
+        <div className="flex flex-col gap-3 md:items-end">
+          {/* Active vs Audit Log */}
+          <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <button
+              onClick={() => { setIsAuditLog(false); setPage(1); }}
+              className={`px-3 py-1.5 text-sm font-medium transition-colors ${!isAuditLog ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+            >
+              Active Feed
+            </button>
+            <button
+              onClick={() => { setIsAuditLog(true); setPage(1); }}
+              className={`px-3 py-1.5 text-sm font-medium transition-colors ${isAuditLog ? 'bg-amber-600 text-white' : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+            >
+              Audit Log (Rejected/Closed)
+            </button>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Near Me Toggle */}
+            {!isAuditLog && userLocation && (
+              <button
+                onClick={() => { setIsNearMe(!isNearMe); setPage(1); }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${isNearMe ? 'bg-green-600 text-white border-green-600 hover:bg-green-700' : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+              >
+                <MapPin className="w-4 h-4" />
+                Near Me (5km)
+              </button>
+            )}
+
+            {/* List vs Map */}
+            <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden w-fit">
+              <button
+                onClick={() => setView('list')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium transition-colors ${view === 'list' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+              >
+                <List className="w-4 h-4" />
+                List
+              </button>
+              <button
+                onClick={() => setView('map')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium transition-colors ${view === 'map' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+              >
+                <MapIcon className="w-4 h-4" />
+                Map
+              </button>
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* Geolocated helper bubble */}
+      {userLocation && isNearMe && !isAuditLog && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 text-sm px-4 py-2 rounded-lg border border-blue-100 dark:border-blue-800 flex items-center gap-2">
+          <MapPin className="w-4 h-4" />
+          Showing complaints strictly within a 5km radius of your current location.
+        </div>
+      )}
 
       {/* Filters & Sort */}
       <div className="flex flex-col sm:flex-row gap-4 glass-card p-4">
@@ -291,6 +381,7 @@ const PublicFeed = () => {
                       complaintId={complaint._id}
                       initialCount={complaint.upvotes?.count || 0}
                       initialHasUpvoted={complaint.hasUserSupported || false}
+                      disabled={['Resolved', 'Closed', 'Rejected'].includes(complaint.status)}
                     />
                   </CardFooter>
                 </Card>

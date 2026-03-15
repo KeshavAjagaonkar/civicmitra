@@ -165,6 +165,20 @@ const ComplaintDetails = () => {
     }
   };
 
+  const handleAppeal = async () => {
+    if (!window.confirm("Are you sure you want to appeal this decision? You can only do this once.")) return;
+    try {
+      const result = await request(`/api/complaints/${id}/appeal`, 'POST', { reason: 'Citizen formally appealed the decision.' });
+      if (result.success) {
+        setCurrentStatus('Under Review');
+        setComplaint(prev => ({ ...prev, status: 'Under Review', isAppealed: true }));
+        toast({ title: 'Appeal Submitted', description: 'Your complaint is back under review.', variant: 'success' });
+      }
+    } catch (err) {
+      toast({ title: 'Appeal Failed', description: err.message, variant: 'destructive' });
+    }
+  };
+
   const handleWorkerChange = async (value) => {
     try {
       const workerId = value === 'unassigned' ? null : value;
@@ -368,6 +382,25 @@ const ComplaintDetails = () => {
                   </div>
                 ) : null;
               })()}
+
+              {/* Citizen Appeal (One-Time) for Rejected/Closed */}
+              {userRole === 'citizen' && ['Rejected', 'Closed'].includes(complaint.status) && !complaint.isAppealed && (() => {
+                const currentUserId = (user?._id || user?.id || '').toString();
+                const isOwner = complaint.citizenId && (complaint.citizenId._id || complaint.citizenId).toString() === currentUserId;
+                return isOwner ? (
+                  <div className="flex gap-2 pt-1">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1 border-red-500 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                      onClick={handleAppeal}
+                    >
+                      Appeal Rejection (One-Time)
+                    </Button>
+                  </div>
+                ) : null;
+              })()}
+              
               {/* Rejection reason field — shown only when Rejected is selected by staff/admin */}
               {(userRole === 'staff' || userRole === 'admin') && currentStatus === 'Rejected' && (
                 <div className="flex flex-col gap-1">

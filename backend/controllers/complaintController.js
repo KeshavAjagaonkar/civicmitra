@@ -434,6 +434,89 @@ exports.getPublicStats = asyncHandler(async (req, res, next) => {
   res.json({ success: true, data: { total, resolved, inProgress } });
 });
 
+// @desc    Soft-delete a complaint (Admin/Staff)
+// @route   DELETE /api/complaints/:id
+// @access  Private (Admin, Staff)
+exports.deleteComplaint = asyncHandler(async (req, res, next) => {
+  const { reason } = req.body;
+  
+  let complaint = await Complaint.findById(req.params.id);
+  if (!complaint) { return next(new ErrorResponse(`Complaint not found`, 404)); }
+
+  // Staff can only delete within their department
+  if (req.user.role === 'staff') {
+    if (!complaint.department || complaint.department.toString() !== (req.user.department?._id || req.user.department).toString()) {
+      return next(new ErrorResponse('Not authorized to delete this complaint', 403));
+    }
+  }
+
+  // Soft Delete Logic (Move to Public Audit Log)
+  const status = 'Rejected';
+  const rejectionReason = reason || 'Violation of Platform Policies';
+
+  complaint.timeline.push({
+    action: 'Rejected',
+    status,
+    notes: `Removed to Audit Log by ${req.user.role}: ${rejectionReason}`,
+    updatedBy: req.user.id,
+  });
+
+  complaint.status = status;
+  complaint.rejectionReason = rejectionReason;
+  // Note: We leave isPublic: true so it stays in the Audit Log, but drops from Active Feed
+  await complaint.save();
+
+  // Notify Citizen
+  await createAndEmitNotification(complaint.citizenId, 'Complaint Rejected', `Your complaint "${complaint.title}" has been rejected. Reason: ${rejectionReason}. You may appeal this decision once.`, complaint._id);
+
+  res.status(200).json({ success: true, data: complaint });
+});
+
+// @desc    Citizen appeals a rejected complaint (One-Time Dispute)
+// @route   POST /api/complaints/:id/appeal
+// @access  Private (Citizen)
+exports.appealComplaint = asyncHandler(async (req, res, next) => {
+  const { reason = 'Citizen disagreed with the rejection and initiated a dispute.' } = req.body;
+
+  let complaint = await Complaint.findById(req.params.id);
+  if (!complaint) { return next(new ErrorResponse(`Complaint not found`, 404)); }
+
+  // Must be owner
+  if (complaint.citizenId.toString() !== req.user.id) {
+    return next(new ErrorResponse('Not authorized to appeal this complaint', 403));
+  }
+
+  // Must be rejected/closed
+  if (!['Rejected', 'Closed'].includes(complaint.status)) {
+    return next(new ErrorResponse('You can only appeal rejected or closed complaints', 400));
+  }
+
+  // One-time appeal check
+  if (complaint.isAppealed) {
+    return next(new ErrorResponse('This complaint has already been appealed once. The final decision stands.', 400));
+  }
+
+  // Appeal Logic
+  complaint.status = 'Under Review';
+  complaint.isAppealed = true;
+
+  complaint.timeline.push({
+    action: 'Under Review',
+    status: 'Under Review',
+    notes: `APPEAL FILED: ${reason}`,
+    updatedBy: req.user.id,
+  });
+
+  await complaint.save();
+
+  // Notify Staff/Admin
+  if (complaint.departmentStaffId) {
+    await createAndEmitNotification(complaint.departmentStaffId, 'Appeal Filed', `Citizen appealed the rejection of "${complaint.title}".`, complaint._id);
+  }
+
+  res.status(200).json({ success: true, data: complaint });
+});
+
 // ============================================================
 // Re-export split controllers for backward-compatible imports
 // ============================================================
@@ -451,3 +534,4 @@ exports.removeUpvote = communityController.removeUpvote;
 exports.updateComplaintByWorker = workerComplaintController.updateComplaintByWorker;
 exports.updateComplaintTimeline = workerComplaintController.updateComplaintTimeline;
 exports.getWorkerReports = workerComplaintController.getWorkerReports;
+

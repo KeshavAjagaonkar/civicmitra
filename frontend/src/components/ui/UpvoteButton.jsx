@@ -5,7 +5,7 @@ import useApi from '@/hooks/useApi';
 import { useToast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
 
-const UpvoteButton = ({ complaintId, initialCount = 0, initialHasUpvoted = false, className }) => {
+const UpvoteButton = ({ complaintId, initialCount = 0, initialHasUpvoted = false, disabled = false, className }) => {
   const [hasUpvoted, setHasUpvoted] = useState(initialHasUpvoted);
   const [count, setCount] = useState(initialCount);
   const { request } = useApi();
@@ -42,8 +42,10 @@ const UpvoteButton = ({ complaintId, initialCount = 0, initialHasUpvoted = false
 
   return (
     <Button
+      type="button"
       variant={hasUpvoted ? "default" : "outline"}
       size="sm"
+      disabled={disabled}
       className={cn("flex items-center gap-2 transition-all", className, hasUpvoted ? "bg-blue-600 hover:bg-blue-700" : "")}
       onClick={handleToggleUpvote}
     >

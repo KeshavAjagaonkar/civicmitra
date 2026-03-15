@@ -20,6 +20,8 @@ const {
   upvoteComplaint,
   removeUpvote,
   getPublicStats,
+  deleteComplaint,
+  appealComplaint,
 } = require('../controllers/complaintController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 const upload = require('../middleware/uploadMiddleware');
@@ -48,7 +50,12 @@ router.route('/:id/upvote')
   .post(protect, authorize('citizen'), upvoteComplaint)
   .delete(protect, authorize('citizen'), removeUpvote);
 
-router.route('/:id').get(protect, getComplaintById);
+router.route('/:id')
+  .get(protect, getComplaintById)
+  .delete(protect, authorize('admin', 'staff'), deleteComplaint);
+
+router.route('/:id/appeal').post(protect, authorize('citizen'), appealComplaint);
+
 router.route('/:id/status').patch(protect, authorize('staff', 'admin'), validate(updateComplaintStatusSchema), updateComplaintStatus);
 router.route('/:id/assign').patch(protect, authorize('admin'), assignComplaint);
 router.route('/:id/assign-worker').patch(protect, authorize('admin', 'staff'), assignWorkerToComplaint);
