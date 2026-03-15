@@ -106,6 +106,21 @@ export const AuthProvider = ({ children }) => {
     }
   }, [toast]);
 
+  // Listen for forced logout from useApi (e.g. 401 from expired/invalidated token)
+  useEffect(() => {
+    const handleForcedLogout = () => {
+      dispatch({ type: 'LOGOUT' });
+      toast({
+        title: "Session Expired",
+        description: "Your session has expired. Please log in again.",
+        variant: "destructive"
+      });
+      window.location.href = '/';
+    };
+    window.addEventListener('auth:logout', handleForcedLogout);
+    return () => window.removeEventListener('auth:logout', handleForcedLogout);
+  }, [toast]);
+
   // Activity tracking - reset timer on user activity
   useEffect(() => {
     if (!state.isAuthenticated) return;
@@ -148,9 +163,35 @@ export const AuthProvider = ({ children }) => {
       }
     }, 60000); // Check every minute
 
+    // Background token refresh — refresh every 6 hours if your session is active
+    const refreshInterval = setInterval(async () => {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      try {
+        const base = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+        const res = await fetch(`${base}/api/auth/refresh-token`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          localStorage.setItem('token', data.token);
+          localStorage.setItem('user', JSON.stringify(data.user));
+          localStorage.setItem('loginTime', Date.now().toString());
+          dispatch({ type: 'SET_USER', payload: { user: data.user, token: data.token } });
+        }
+      } catch {
+        // Refresh failed silently — will retry next interval
+      }
+    }, 6 * 60 * 60 * 1000); // 6 hours
+
     return () => {
       events.forEach(event => window.removeEventListener(event, updateActivity));
       clearInterval(inactivityCheck);
+      clearInterval(refreshInterval);
     };
   }, [state.isAuthenticated, toast]);
 

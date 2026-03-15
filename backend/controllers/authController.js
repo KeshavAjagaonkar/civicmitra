@@ -133,8 +133,11 @@ exports.changePassword = asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse('Current password is not correct', 400));
   }
   user.password = newPassword;
+  // Track password change time — used to invalidate old tokens
+  user.passwordChangedAt = new Date();
   await user.save();
-  res.status(200).json({ success: true, message: 'Password updated successfully' });
+  // Issue a new token so the user stays logged in after password change
+  sendTokenResponse(user, 200, res);
 });
 
 // @desc    Forgot password — send reset email
@@ -197,4 +200,16 @@ exports.resetPassword = asyncHandler(async (req, res, next) => {
   await user.save();
 
   res.status(200).json({ success: true, message: 'Password has been reset successfully. You can now log in.' });
+});
+
+// @desc    Refresh JWT token (extends session without re-login)
+// @route   POST /api/auth/refresh-token
+// @access  Private
+exports.refreshToken = asyncHandler(async (req, res, next) => {
+  // req.user is already verified by the protect middleware
+  const user = await User.findById(req.user.id).populate('department');
+  if (!user) {
+    return next(new ErrorResponse('User not found', 404));
+  }
+  sendTokenResponse(user, 200, res);
 });

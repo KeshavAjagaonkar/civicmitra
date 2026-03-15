@@ -1,5 +1,16 @@
 const nodemailer = require('nodemailer');
 
+// HTML-escape user-controlled strings to prevent XSS in email templates
+const escapeHtml = (str) => {
+  if (typeof str !== 'string') return str;
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+};
+
 // Check if email is configured
 const isEmailConfigured = () => {
   return !!(process.env.EMAIL_USER && process.env.EMAIL_PASS);
@@ -73,10 +84,10 @@ exports.sendWelcomeEmail = async (user) => {
           <h1>Welcome to CivicMitra!</h1>
         </div>
         <div class="content">
-          <h2>Hello ${user.name}!</h2>
+          <h2>Hello ${escapeHtml(user.name)}!</h2>
           <p>Thank you for registering with CivicMitra. Your account has been created successfully.</p>
 
-          <p><strong>Your Login Email:</strong> ${user.email}</p>
+          <p><strong>Your Login Email:</strong> ${escapeHtml(user.email)}</p>
 
           <p>You can now:</p>
           <ul>
@@ -132,14 +143,14 @@ exports.sendComplaintUpdateEmail = async (user, complaint, message) => {
           <h1>Complaint Update</h1>
         </div>
         <div class="content">
-          <h2>Hello ${user.name}!</h2>
-          <p>${message}</p>
+          <h2>Hello ${escapeHtml(user.name)}!</h2>
+          <p>${escapeHtml(message)}</p>
 
           <h3>Complaint Details:</h3>
-          <p><strong>Title:</strong> ${complaint.title}</p>
-          <p><strong>Status:</strong> <span class="status-badge status-${complaint.status.toLowerCase().replace(' ', '-')}">${complaint.status}</span></p>
-          <p><strong>Category:</strong> ${complaint.category}</p>
-          <p><strong>Location:</strong> ${typeof complaint.location === 'object' ? complaint.location.address : complaint.location}</p>
+          <p><strong>Title:</strong> ${escapeHtml(complaint.title)}</p>
+          <p><strong>Status:</strong> <span class="status-badge status-${complaint.status.toLowerCase().replace(' ', '-')}">${escapeHtml(complaint.status)}</span></p>
+          <p><strong>Category:</strong> ${escapeHtml(complaint.category)}</p>
+          <p><strong>Location:</strong> ${escapeHtml(typeof complaint.location === 'object' ? complaint.location.address : complaint.location)}</p>
 
           <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/${user.slug || ''}/complaints/${complaint._id}" class="button">View Complaint Details</a>
 
@@ -183,18 +194,18 @@ exports.sendWorkerAssignmentEmail = async (user, complaint, worker) => {
           <h1>✅ Worker Assigned!</h1>
         </div>
         <div class="content">
-          <h2>Good News, ${user.name}!</h2>
+          <h2>Good News, ${escapeHtml(user.name)}!</h2>
           <p>A worker has been assigned to handle your complaint.</p>
 
           <h3>Complaint:</h3>
-          <p><strong>${complaint.title}</strong></p>
-          <p>${complaint.description}</p>
+          <p><strong>${escapeHtml(complaint.title)}</strong></p>
+          <p>${escapeHtml(complaint.description)}</p>
 
           <div class="worker-info">
             <h3>👷 Assigned Worker:</h3>
-            <p><strong>Name:</strong> ${worker.name}</p>
-            <p><strong>Email:</strong> ${worker.email}</p>
-            ${worker.phone ? `<p><strong>Phone:</strong> ${worker.phone}</p>` : ''}
+            <p><strong>Name:</strong> ${escapeHtml(worker.name)}</p>
+            <p><strong>Email:</strong> ${escapeHtml(worker.email)}</p>
+            ${worker.phone ? `<p><strong>Phone:</strong> ${escapeHtml(worker.phone)}</p>` : ''}
           </div>
 
           <p>You can track the progress and chat with the worker through the CivicMitra platform.</p>
@@ -226,7 +237,7 @@ exports.sendResetPasswordEmail = async (user, resetUrl) => {
     <body style="font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px;">
       <div style="max-width: 500px; margin: 0 auto; background: #fff; border-radius: 12px; padding: 32px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
         <h2 style="color: #1a1a1a; margin-bottom: 16px;">Reset Your Password</h2>
-        <p style="color: #555;">Hi <strong>${user.name}</strong>,</p>
+        <p style="color: #555;">Hi <strong>${escapeHtml(user.name)}</strong>,</p>
         <p style="color: #555;">You requested a password reset. Click the button below to set a new password. This link expires in <strong>15 minutes</strong>.</p>
         <div style="text-align: center; margin: 24px 0;">
           <a href="${resetUrl}" style="display: inline-block; padding: 12px 32px; background: #2563eb; color: #fff; border-radius: 8px; text-decoration: none; font-weight: 600;">Reset Password</a>

@@ -32,6 +32,17 @@ exports.protect = asyncHandler(async (req, res, next) => {
 
     req.user = await User.findById(decoded.id).populate('department');
 
+    // Check if password was changed after this token was issued
+    if (req.user?.passwordChangedAt) {
+      const changedAtTimestamp = Math.floor(req.user.passwordChangedAt.getTime() / 1000);
+      if (decoded.iat < changedAtTimestamp) {
+        return res.status(401).json({
+          success: false,
+          message: 'Password was recently changed. Please log in again.'
+        });
+      }
+    }
+
     next();
   } catch (err) {
     return res.status(401).json({

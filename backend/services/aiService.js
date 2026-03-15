@@ -1,17 +1,23 @@
-const axios = require('axios');
+const { GoogleGenAI } = require('@google/genai');
+const { CATEGORIES } = require('../../shared/constants');
+
+// Initialize the Google GenAI client once (reused across calls)
+let genai = null;
+
+const getGenAI = () => {
+  if (!genai && process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_gemini_api_key_here') {
+    genai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  }
+  return genai;
+};
 
 /**
  * Classify complaint and determine priority using Gemini AI
- * @param {string} title - Complaint title
- * @param {string} description - Complaint description
- * @param {string} category - User-selected category
- * @returns {Object} - { category, department, priority, confidence }
  */
 exports.classifyComplaint = async (title, description, category) => {
   try {
-    // If no API key is provided, fallback to basic classification
-    if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'your_gemini_api_key_here') {
-
+    const client = getGenAI();
+    if (!client) {
       return getFallbackClassification(category);
     }
 
@@ -23,7 +29,7 @@ Description: ${description}
 User-selected Category: ${category}
 
 Based on this information, provide a JSON response with:
-1. "category" - The most appropriate category from: [Roads, Water Supply, Sanitation, Electricity, Public Health, Street Lights, Drainage, Garbage, Other]
+1. "category" - The most appropriate category from: [${CATEGORIES.join(', ')}]
 2. "department" - The responsible department ID (use null for now, will be mapped later)
 3. "priority" - Priority level: High/Medium/Low based on urgency and public impact
 4. "confidence" - Your confidence level (0-100) in this classification
@@ -37,22 +43,28 @@ Consider factors like:
 
 Respond only with valid JSON:`;
 
-    const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-      {
-        contents: [{ parts: [{ text: prompt }] }]
-      }
-    );
-    const text = response.data.candidates[0].content.parts[0].text;
+    const response = await client.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+    });
+
+    const text = response.text;
 
     try {
-      const parsedResponse = JSON.parse(text);
+      // Clean the response (remove markdown code blocks if present)
+      let cleanedText = text.trim();
+      if (cleanedText.startsWith('```json')) {
+        cleanedText = cleanedText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+      } else if (cleanedText.startsWith('```')) {
+        cleanedText = cleanedText.replace(/```\n?/g, '');
+      }
 
-      // Validate the response
+      const parsedResponse = JSON.parse(cleanedText);
+
       if (parsedResponse.category && parsedResponse.priority) {
         return {
           category: parsedResponse.category,
-          department: null, // Will be mapped to actual department ID later
+          department: null,
           priority: parsedResponse.priority,
           confidence: parsedResponse.confidence || 75,
           reasoning: parsedResponse.reasoning || 'AI classification',
@@ -62,13 +74,12 @@ Respond only with valid JSON:`;
         throw new Error('Invalid AI response format');
       }
     } catch (parseError) {
-
+      console.error('[AI Classify] Parse error:', parseError.message);
       return getFallbackClassification(category);
     }
 
   } catch (error) {
-
-    // Fallback to rule-based classification
+    console.error('[AI Classify] API error:', error.message);
     return getFallbackClassification(category);
   }
 };
@@ -103,8 +114,6 @@ const getFallbackClassification = (category) => {
 
 /**
  * Get department ID by category — queries DB so admins control routing without code changes.
- * Departments declare which categories they handle via the categories[] field.
- * Falls back to null (unassigned) if no department claims the category.
  */
 exports.getDepartmentByCategory = async (category) => {
   try {
@@ -112,23 +121,18 @@ exports.getDepartmentByCategory = async (category) => {
     const department = await Department.findOne({ categories: category }).select('_id');
     return department ? department._id : null;
   } catch (error) {
+    console.error('[Department Lookup] Failed:', error.message);
     return null;
   }
 };
 
 /**
  * Generate AI summary for complaint
- * @param {string} title - Complaint title
- * @param {string} description - Complaint description
- * @param {string} location - Complaint location
- * @param {string} category - Complaint category
- * @returns {Object} - AI-generated summary with key points and extracted info
  */
 exports.summarizeComplaint = async (title, description, location, category) => {
   try {
-    // If no API key, return null (complaint will still work)
-    if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'your_gemini_api_key_here') {
-
+    const client = getGenAI();
+    if (!client) {
       return null;
     }
 
@@ -156,13 +160,12 @@ Focus on:
 
 Respond only with valid JSON.`;
 
-    const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-      {
-        contents: [{ parts: [{ text: prompt }] }]
-      }
-    );
-    const text = response.data.candidates[0].content.parts[0].text;
+    const response = await client.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+    });
+
+    const text = response.text;
 
     // Clean the response (remove markdown code blocks if present)
     let cleanedText = text.trim();
@@ -192,8 +195,7 @@ Respond only with valid JSON.`;
         generatedAt: new Date(),
       };
     } catch (parseError) {
-
-      // Return basic fallback summary
+      console.error('[AI Summary] Parse error:', parseError.message);
       return {
         shortSummary: `${category} issue reported at ${location}`,
         keyPoints: [
@@ -213,8 +215,7 @@ Respond only with valid JSON.`;
     }
 
   } catch (error) {
-
-    // Return null - complaint will still work without summary
+    console.error('[AI Summary] API error:', error.message);
     return null;
   }
 };

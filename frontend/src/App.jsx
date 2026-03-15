@@ -14,6 +14,7 @@ import ProtectedRoute, {
   CitizenRoute,
   PublicRoute
 } from './components/ProtectedRoute';
+import SlugRedirect from './components/SlugRedirect';
 
 // --- CORE PAGES ---
 // Public & Auth
@@ -33,7 +34,7 @@ import CitizenDashboard from './pages/citizen/CitizenDashboard';
 import MyComplaints from './pages/citizen/MyComplaints';
 import FileComplaint from './pages/citizen/FileComplaint';
 import ComplaintDetails from './pages/citizen/ComplaintDetails';
-import FeedbackPage from './pages/citizen/Feedback'; // Renamed import for clarity
+import FeedbackPage from './pages/citizen/Feedback';
 import CitizenChatPage from './pages/citizen/ChatPage';
 import FeedbackList from './pages/citizen/FeedbackList';
 
@@ -60,8 +61,6 @@ import AssignedTasks from './pages/worker/AssignedTasks';
 import TaskDetails from './pages/worker/TaskDetails';
 import WorkerReports from './pages/worker/WorkerReports';
 
-
-
 // Toaster & Theme
 import { Toaster } from "@/components/ui/Toaster";
 import { ThemeProvider } from './context/ThemeContext';
@@ -76,7 +75,7 @@ function App() {
             <Route index element={<LandingPage />} />
           </Route>
 
-          {/* Transparency dashboard — fully public, no login, own full-page layout */}
+          {/* Transparency dashboard — fully public, no login */}
           <Route path="/transparency" element={<PublicTransparency />} />
 
           {/* Authentication Routes */}
@@ -89,7 +88,7 @@ function App() {
           {/* Protected App Routes */}
           <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
 
-            {/* ==== CITIZEN ROUTES (Slug-based) ==== */}
+            {/* ==== CITIZEN ROUTES (Slug-based — primary) ==== */}
             <Route path="/:slug/dashboard" element={<CitizenRoute><CitizenDashboard /></CitizenRoute>} />
             <Route path="/:slug/public" element={<CitizenRoute><PublicFeed /></CitizenRoute>} />
             <Route path="/:slug/complaints" element={<CitizenRoute><MyComplaints /></CitizenRoute>} />
@@ -101,17 +100,17 @@ function App() {
             <Route path="/:slug/profile" element={<CitizenRoute><ProfilePage /></CitizenRoute>} />
             <Route path="/:slug/settings" element={<CitizenRoute><ProfilePage /></CitizenRoute>} />
 
-            {/* ==== CITIZEN ROUTES (Legacy/Fallback without slug) ==== */}
-            <Route path="/dashboard" element={<CitizenRoute><CitizenDashboard /></CitizenRoute>} />
-            <Route path="/public" element={<CitizenRoute><PublicFeed /></CitizenRoute>} />
-            <Route path="/complaints" element={<CitizenRoute><MyComplaints /></CitizenRoute>} />
-            <Route path="/complaints/create" element={<CitizenRoute><FileComplaint /></CitizenRoute>} />
-            <Route path="/complaints/:id" element={<CitizenRoute><ComplaintDetails /></CitizenRoute>} />
-            <Route path="/complaints/:id/feedback" element={<CitizenRoute><FeedbackPage /></CitizenRoute>} />
-            <Route path="/chat" element={<CitizenRoute><CitizenChatPage /></CitizenRoute>} />
-            <Route path="/feedback" element={<CitizenRoute><FeedbackList /></CitizenRoute>} />
-            <Route path="/profile" element={<CitizenRoute><ProfilePage /></CitizenRoute>} />
-            <Route path="/settings" element={<CitizenRoute><ProfilePage /></CitizenRoute>} />
+            {/* ==== CITIZEN ROUTES (Legacy — auto-redirect to slug-based when slug is available) ==== */}
+            <Route path="/dashboard" element={<CitizenRoute><SlugRedirect type="citizen"><CitizenDashboard /></SlugRedirect></CitizenRoute>} />
+            <Route path="/public" element={<CitizenRoute><SlugRedirect type="citizen"><PublicFeed /></SlugRedirect></CitizenRoute>} />
+            <Route path="/complaints" element={<CitizenRoute><SlugRedirect type="citizen"><MyComplaints /></SlugRedirect></CitizenRoute>} />
+            <Route path="/complaints/create" element={<CitizenRoute><SlugRedirect type="citizen"><FileComplaint /></SlugRedirect></CitizenRoute>} />
+            <Route path="/complaints/:id" element={<CitizenRoute><SlugRedirect type="citizen"><ComplaintDetails /></SlugRedirect></CitizenRoute>} />
+            <Route path="/complaints/:id/feedback" element={<CitizenRoute><SlugRedirect type="citizen"><FeedbackPage /></SlugRedirect></CitizenRoute>} />
+            <Route path="/chat" element={<CitizenRoute><SlugRedirect type="citizen"><CitizenChatPage /></SlugRedirect></CitizenRoute>} />
+            <Route path="/feedback" element={<CitizenRoute><SlugRedirect type="citizen"><FeedbackList /></SlugRedirect></CitizenRoute>} />
+            <Route path="/profile" element={<CitizenRoute><SlugRedirect type="citizen"><ProfilePage /></SlugRedirect></CitizenRoute>} />
+            <Route path="/settings" element={<CitizenRoute><SlugRedirect type="citizen"><ProfilePage /></SlugRedirect></CitizenRoute>} />
 
             {/* ==== ADMIN ROUTES ==== */}
             <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
@@ -125,7 +124,7 @@ function App() {
             <Route path="/admin/profile" element={<AdminRoute><ProfilePage /></AdminRoute>} />
             <Route path="/admin/settings" element={<AdminRoute><ProfilePage /></AdminRoute>} />
 
-            {/* ==== STAFF ROUTES (Department-based) ==== */}
+            {/* ==== STAFF ROUTES (Department slug-based — primary) ==== */}
             <Route path="/:departmentSlug/staff" element={<StaffRoute><StaffDashboard /></StaffRoute>} />
             <Route path="/:departmentSlug/staff/complaints" element={<StaffRoute><StaffComplaintManagement /></StaffRoute>} />
             <Route path="/:departmentSlug/staff/complaints/:id" element={<StaffRoute><ComplaintDetails /></StaffRoute>} />
@@ -138,14 +137,14 @@ function App() {
             <Route path="/:departmentSlug/staff/profile" element={<StaffRoute><ProfilePage /></StaffRoute>} />
             <Route path="/:departmentSlug/staff/settings" element={<StaffRoute><ProfilePage /></StaffRoute>} />
 
-            {/* ==== STAFF ROUTES (Legacy fallback) ==== */}
-            <Route path="/staff" element={<StaffRoute><StaffDashboard /></StaffRoute>} />
-            <Route path="/staff/complaints" element={<StaffRoute><StaffComplaintManagement /></StaffRoute>} />
-            <Route path="/staff/complaints/:id" element={<StaffRoute><ComplaintDetails /></StaffRoute>} />
-            <Route path="/staff/stats" element={<StaffRoute><StaffStats /></StaffRoute>} />
-            <Route path="/staff/workers" element={<StaffRoute><WorkerManagement /></StaffRoute>} />
-            <Route path="/staff/profile" element={<StaffRoute><ProfilePage /></StaffRoute>} />
-            <Route path="/staff/settings" element={<StaffRoute><ProfilePage /></StaffRoute>} />
+            {/* ==== STAFF ROUTES (Legacy — auto-redirect to slug-based) ==== */}
+            <Route path="/staff" element={<StaffRoute><SlugRedirect type="staff"><StaffDashboard /></SlugRedirect></StaffRoute>} />
+            <Route path="/staff/complaints" element={<StaffRoute><SlugRedirect type="staff"><StaffComplaintManagement /></SlugRedirect></StaffRoute>} />
+            <Route path="/staff/complaints/:id" element={<StaffRoute><SlugRedirect type="staff"><ComplaintDetails /></SlugRedirect></StaffRoute>} />
+            <Route path="/staff/stats" element={<StaffRoute><SlugRedirect type="staff"><StaffStats /></SlugRedirect></StaffRoute>} />
+            <Route path="/staff/workers" element={<StaffRoute><SlugRedirect type="staff"><WorkerManagement /></SlugRedirect></StaffRoute>} />
+            <Route path="/staff/profile" element={<StaffRoute><SlugRedirect type="staff"><ProfilePage /></SlugRedirect></StaffRoute>} />
+            <Route path="/staff/settings" element={<StaffRoute><SlugRedirect type="staff"><ProfilePage /></SlugRedirect></StaffRoute>} />
 
             {/* ==== WORKER ROUTES ==== */}
             <Route path="/worker" element={<WorkerRoute><WorkerDashboard /></WorkerRoute>} />
@@ -157,7 +156,6 @@ function App() {
 
           </Route>
 
-
           {/* Catch-all for 404 */}
           <Route path="*" element={<NotFound />} />
         </Routes>
@@ -168,4 +166,3 @@ function App() {
 }
 
 export default App;
-

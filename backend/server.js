@@ -118,7 +118,7 @@ io.on('connection', (socket) => {
 // Middleware
 app.use(cors(corsOptions)); // Use configured CORS for Express
 app.use(helmet({ crossOriginResourcePolicy: false }));
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 
 // Rate Limiting - More lenient in development to accommodate React Strict Mode and multiple hooks
 const limiter = rateLimit({

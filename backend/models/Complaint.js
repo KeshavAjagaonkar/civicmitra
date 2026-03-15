@@ -204,14 +204,6 @@ const ComplaintSchema = new mongoose.Schema({
     score: { type: Number, default: 0 },
     lastCalculated: { type: Date, default: Date.now },
   },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now,
-  },
 }, {
   timestamps: true, // Automatically manage createdAt and updatedAt
 });

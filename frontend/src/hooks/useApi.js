@@ -48,6 +48,15 @@ const useApi = () => {
         }
 
         if (!response.ok) {
+          // Handle 401 — token is invalid/expired, trigger auto-logout
+          if (response.status === 401) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            localStorage.removeItem('loginTime');
+            localStorage.removeItem('lastActivity');
+            // Dispatch a custom event so AuthContext can react
+            window.dispatchEvent(new Event('auth:logout'));
+          }
           const serverMessage = data?.error || data?.message;
           const err = new Error(serverMessage || `Request failed (${response.status})`);
           err.status = response.status;

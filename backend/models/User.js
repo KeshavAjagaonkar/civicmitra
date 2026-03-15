@@ -93,6 +93,7 @@ const UserSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  passwordChangedAt: Date,  // Set when password changes — used to invalidate old tokens
   resetPasswordToken: String,
   resetPasswordExpire: Date,
   createdAt: {

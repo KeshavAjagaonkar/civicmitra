@@ -4,9 +4,11 @@
 
 **Registration Entities (Public):**
 - ✅ **Citizens** - Can register publicly at `/auth`
-- ✅ **Workers** - Can register publicly at `/auth` (must select department)
-- ❌ **Staff** - CANNOT register (created only by Admin)
+- ❌ **Workers** - CANNOT register publicly (created only by Admin via `/api/admin/users`)
+- ❌ **Staff** - CANNOT register publicly (created only by Admin via `/api/admin/users`)
 - ❌ **Admin** - CANNOT register (1 seeded admin account only)
+
+> **Note:** Public registration at `/auth` always creates **citizen** accounts. All staff and worker accounts must be created by the Admin from the Admin Dashboard.
 
 ---
 
@@ -74,11 +76,10 @@ Citizens can register at `/auth` by selecting "Citizen" role.
 
 ## Worker Accounts
 
-Workers can register themselves at `/auth` by:
-1. Selecting "Field Worker" role
-2. Choosing their department from the dropdown
+Worker accounts are created by the Admin only (same as Staff).
+Admin creates workers via the Admin Dashboard → User Management → Create User → Select "Worker" role + Department.
 
-**No pre-seeded worker accounts** - Workers register themselves with their department details.
+**No pre-seeded worker accounts** — Admin creates them as needed.
 
 ---
 
@@ -87,20 +88,16 @@ Workers can register themselves at `/auth` by:
 ### For Citizens:
 1. Go to `/auth`
 2. Click "Register"
-3. Select "Citizen" role
-4. Fill in details (name, email, phone, address, password)
-5. Submit
+3. Fill in details (name, email, phone, address, password)
+4. Submit
 
-### For Workers:
-1. Go to `/auth`
-2. Click "Register"
-3. Select "Field Worker" role
-4. Choose your department (Water Supply, Sanitation, etc.)
-5. Fill in details (name, email, phone, address, password)
-6. Submit
-
-### For Staff:
-Staff accounts are created by Admin only. Contact the system administrator.
+### For Workers & Staff:
+Worker and Staff accounts are created by the Admin only.
+1. Admin logs in at `/admin`
+2. Goes to User Management
+3. Clicks "Create User"
+4. Selects role (Staff or Worker) and assigns a Department
+5. Fills in user details and submits
 
 ---
 

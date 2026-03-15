@@ -1,46 +1,20 @@
+/**
+ * Complaint Controller — Core CRUD and Status Management
+ * 
+ * Community features → communityController.js
+ * Worker operations → workerComplaintController.js
+ * Notification helpers → utils/notificationHelper.js
+ */
 const Complaint = require('../models/Complaint');
-const Notification = require('../models/Notification');
 const asyncHandler = require('../middleware/asyncHandler');
 const ErrorResponse = require('../utils/errorResponse');
 const Chat = require('../models/Chat');
-const { getSocketIO } = require('../utils/socket');
 const { classifyComplaint, summarizeComplaint, getDepartmentByCategory } = require('../services/aiService');
 const { sendComplaintUpdateEmail, sendWorkerAssignmentEmail } = require('../utils/emailService');
 const User = require('../models/User');
-const { calculateCommunityPriority } = require('../utils/communityPriority');
-const { findSimilarWithAI, findSimilarWithKeywords } = require('../utils/duplicateDetection');
-
-// A helper function to create and emit notifications
-const createAndEmitNotification = async (userId, title, message, complaintId) => {
-  if (!userId) return;
-  try {
-    const notification = await Notification.create({ userId, title, message, complaintId });
-    const io = getSocketIO();
-    if (io) {
-      io.to(userId.toString()).emit('new_notification', notification);
-    }
-  } catch (error) {
-    // Notification creation failed silently — non-critical
-  }
-};
-
-// Broadcast a notification to the original filer AND all supporters of a complaint
-const broadcastToSupporters = async (complaint, title, message) => {
-  // Notify original filer
-  await createAndEmitNotification(complaint.citizenId, title, message, complaint._id);
-
-  // Notify all supporters (skip if same as the filer)
-  if (complaint.upvotes && complaint.upvotes.supporters) {
-    for (const supporter of complaint.upvotes.supporters) {
-      if (supporter.userId.toString() !== complaint.citizenId.toString()) {
-        await createAndEmitNotification(supporter.userId, title, message, complaint._id);
-      }
-    }
-  }
-};
+const { createAndEmitNotification, broadcastToSupporters } = require('../utils/notificationHelper');
 
 // Per-user filing rate limit: max 5 complaints per 24 hours.
-// Prevents spam/abuse and protects AI API quota.
 const DAILY_FILING_LIMIT = 5;
 
 // @desc    Create a new complaint
@@ -72,7 +46,6 @@ exports.createComplaint = asyncHandler(async (req, res, next) => {
   if (!departmentId) {
     const finalCategory = classification.category || category;
     departmentId = await getDepartmentByCategory(finalCategory);
-    // Department auto-assigned based on category
   }
 
   let locationData = {
@@ -82,9 +55,8 @@ exports.createComplaint = asyncHandler(async (req, res, next) => {
 
   if (lng && lat) {
     locationData.coordinates = [parseFloat(lng), parseFloat(lat)];
-  } else {
-    locationData.coordinates = [72.8777, 19.0760]; // fallback to Mumbai if not provided
   }
+  // Fix #17: No longer hardcoding Mumbai fallback — coordinates are optional
 
   const newComplaintData = {
     title,
@@ -103,14 +75,14 @@ exports.createComplaint = asyncHandler(async (req, res, next) => {
     timeline: [{ action: 'Complaint Submitted', status: 'Submitted', updatedBy: req.user.id }],
   };
 
-  // Generate AI summary (runs in background, doesn't block complaint creation)
+  // Generate AI summary (non-blocking — complaint still created without it)
   try {
     const summary = await summarizeComplaint(title, description, locationData.address, classification.category || category);
     if (summary) {
       newComplaintData.aiSummary = summary;
     }
   } catch (summaryError) {
-    // AI Summary generation failed — complaint will still be created without it
+    console.error('[AI Summary] Failed:', summaryError.message);
   }
 
   if (req.files && req.files.length > 0) {
@@ -131,7 +103,6 @@ exports.createComplaint = asyncHandler(async (req, res, next) => {
         complaint.departmentStaffId = departmentStaff._id;
         await complaint.save();
 
-        // Notify staff about new complaint
         await createAndEmitNotification(
           departmentStaff._id,
           'New Complaint Assigned',
@@ -140,7 +111,7 @@ exports.createComplaint = asyncHandler(async (req, res, next) => {
         );
       }
     } catch (assignError) {
-      // Auto-assign to staff failed — complaint still created
+      console.error('[Auto-assign] Failed to assign staff:', assignError.message);
     }
   }
 
@@ -151,7 +122,7 @@ exports.createComplaint = asyncHandler(async (req, res, next) => {
     complaint.chat = chat._id;
     await complaint.save();
   } catch (chatError) {
-    // Chat creation failed — complaint still created
+    console.error('[Chat] Failed to create chat for complaint:', chatError.message);
   }
 
   res.status(201).json({ success: true, data: complaint });
@@ -208,7 +179,6 @@ exports.getComplaintById = asyncHandler(async (req, res, next) => {
     complaint.department._id.toString() === (req.user.department._id || req.user.department).toString();
   const isWorker = req.user.role === 'worker' && complaint.workerId && complaint.workerId._id.toString() === req.user.id;
   const isAdmin = req.user.role === 'admin';
-  // Also allow if the complaint is public (for community feed)
   const isPublic = complaint.isPublic;
 
   if (!isOwner && !isStaff && !isWorker && !isAdmin && !isPublic) {
@@ -219,7 +189,6 @@ exports.getComplaintById = asyncHandler(async (req, res, next) => {
 });
 
 // Valid state transitions — enforced to prevent illegal status jumps.
-// This acts as the system's state machine guard.
 const VALID_TRANSITIONS = {
   'Submitted':     ['Under Review', 'Rejected', 'In Progress', 'Transferred'],
   'Under Review':  ['Needs Info', 'In Progress', 'Rejected', 'Transferred'],
@@ -375,90 +344,9 @@ exports.updateAssignment = asyncHandler(async (req, res, next) => {
   res.status(200).json({ success: true, data: complaint });
 });
 
-// @desc    Update complaint timeline by Worker
-// @route   PUT /api/complaints/:id/worker-update
-// @access  Private (Worker)
-exports.updateComplaintByWorker = asyncHandler(async (req, res, next) => {
-  const { status, notes } = req.body;
-  let complaint = await Complaint.findById(req.params.id);
-  if (!complaint) { return next(new ErrorResponse(`Complaint not found`, 404)); }
-  if (complaint.workerId?.toString() !== req.user.id) {
-    return next(new ErrorResponse('You are not authorized to update this complaint', 403));
-  }
-
-  // State machine guard: workers can only interact with In Progress complaints.
-  // Resolved, Closed, Rejected are locked — the complaint is done from the worker's side.
-  if (complaint.status !== 'In Progress') {
-    return next(new ErrorResponse(
-      `Cannot add updates to a complaint in "${complaint.status}" status. Workers can only update In Progress complaints.`,
-      400
-    ));
-  }
-
-  // Workers can only change status to Resolved. Any other status change is staff/admin territory.
-  if (status && status !== 'Resolved') {
-    return next(new ErrorResponse(
-      `Workers can only change status to "Resolved". Other status changes must be made by staff.`,
-      400
-    ));
-  }
-
-  if (status) complaint.status = status;
-
-  // Handle uploaded attachments
-  const attachments = [];
-  if (req.files && req.files.length > 0) {
-    for (const file of req.files) {
-      if (file.path) {
-        // Cloudinary upload
-        attachments.push({
-          public_id: file.filename,
-          url: file.path,
-        });
-      } else if (file.filename) {
-        // Local storage
-        attachments.push({
-          public_id: file.filename,
-          url: `/uploads/${file.filename}`,
-        });
-      }
-    }
-  }
-
-  complaint.timeline.push({
-    action: status === 'Resolved' ? 'Resolved' : 'Update',
-    status: status || complaint.status,
-    notes: notes || 'Worker provided an update.',
-    updatedBy: req.user.id,
-    attachments: attachments,
-  });
-
-  await complaint.save();
-
-  await broadcastToSupporters(complaint, 'Progress Update', `An update was posted for complaint: "${complaint.title}".`);
-
-  // Send email notification to citizen about worker update
-  const citizen = await User.findById(complaint.citizenId);
-  if (citizen) {
-    const updateMessage = status === 'Resolved'
-      ? `Great news! Your complaint has been resolved by the assigned worker.`
-      : `Your complaint has been updated by the assigned worker.`;
-    await sendComplaintUpdateEmail(citizen, complaint, updateMessage);
-  }
-
-  await complaint.populate('citizenId workerId timeline.updatedBy', 'name email role');
-
-  res.status(200).json({ success: true, data: complaint });
-});
-
-// --- Other functions that might have been deleted ---
-// These are just placeholders to ensure routes don't crash.
-// We should verify if more specific logic is needed.
-
 exports.getUserStats = asyncHandler(async (req, res, next) => {
   let query = {};
 
-  // Build query based on user role
   if (req.user.role === 'citizen') {
     query = { citizenId: req.user.id };
   } else if (req.user.role === 'staff') {
@@ -466,7 +354,6 @@ exports.getUserStats = asyncHandler(async (req, res, next) => {
   } else if (req.user.role === 'worker') {
     query = { workerId: req.user.id };
   }
-  // Admin gets all complaints (empty query)
 
   const total = await Complaint.countDocuments(query);
   const resolved = await Complaint.countDocuments({ ...query, status: 'Resolved' });
@@ -518,21 +405,13 @@ exports.assignComplaint = asyncHandler(async (req, res, next) => {
   res.status(200).json({ success: true, data: complaint });
 });
 
-exports.updateComplaintTimeline = asyncHandler(async (req, res, next) => {
-  // This is redundant with updateComplaintByWorker, but we keep it to prevent crashes.
-  // We should consolidate this logic later.
-  return exports.updateComplaintByWorker(req, res, next);
-});
-
 exports.getRecentComplaints = asyncHandler(async (req, res, next) => {
-  // Logic for staff/admin to get recent complaints in their scope.
   let query = {};
   if (req.user.role === 'staff') {
     query.department = req.user.department?._id || req.user.department;
   } else if (req.user.role === 'worker') {
     query.workerId = req.user.id;
   }
-  // Admin gets all complaints (empty query)
 
   const complaints = await Complaint.find(query)
     .populate('citizenId', 'name email')
@@ -542,431 +421,33 @@ exports.getRecentComplaints = asyncHandler(async (req, res, next) => {
   res.status(200).json({ success: true, data: complaints });
 });
 
-// @desc    Get detailed worker performance report
-// @route   GET /api/complaints/worker-reports
-// @access  Private (Worker)
-exports.getWorkerReports = asyncHandler(async (req, res, next) => {
-  const workerId = req.user.id;
-  const { period = 'thisMonth', category = 'all' } = req.query;
-
-  // Calculate date range based on period
-  const now = new Date();
-  let startDate;
-
-  switch (period) {
-    case 'thisMonth':
-      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-      break;
-    case 'lastMonth':
-      startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      break;
-    case 'thisYear':
-      startDate = new Date(now.getFullYear(), 0, 1);
-      break;
-    default:
-      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-  }
-
-  // Build query
-  let query = { workerId };
-  if (period === 'lastMonth') {
-    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
-    query.createdAt = { $gte: startDate, $lte: lastMonthEnd };
-  } else {
-    query.createdAt = { $gte: startDate };
-  }
-
-  if (category !== 'all') {
-    query.category = category;
-  }
-
-  // Get all complaints for the worker in the period
-  const allComplaints = await Complaint.find(query)
-    .populate('citizenId', 'name email')
-    .populate('department', 'name')
-    .populate('workerId', 'name email')
-    .sort({ createdAt: -1 });
-
-  // Calculate statistics
-  const totalTasks = allComplaints.length;
-  const completedTasks = allComplaints.filter(c => c.status === 'Resolved').length;
-  const inProgressTasks = allComplaints.filter(c => c.status === 'In Progress').length;
-  const overdueTasks = allComplaints.filter(c =>
-    c.deadline && new Date(c.deadline) < now && c.status !== 'Resolved'
-  ).length;
-
-  // Calculate average completion time (for resolved complaints)
-  const resolvedComplaints = allComplaints.filter(c => c.status === 'Resolved');
-  let averageCompletionTime = 'N/A';
-  if (resolvedComplaints.length > 0) {
-    const totalDays = resolvedComplaints.reduce((sum, c) => {
-      const created = new Date(c.createdAt);
-      const resolved = c.timeline?.find(t => t.status === 'Resolved');
-      if (resolved) {
-        const resolvedDate = new Date(resolved.date);
-        const days = (resolvedDate - created) / (1000 * 60 * 60 * 24);
-        return sum + days;
-      }
-      return sum;
-    }, 0);
-    const avgDays = (totalDays / resolvedComplaints.length).toFixed(1);
-    averageCompletionTime = `${avgDays} days`;
-  }
-
-  // Calculate efficiency (completion rate)
-  const efficiency = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-
-  // Calculate average rating (from feedback)
-  const ratedComplaints = allComplaints.filter(c => c.feedback && c.feedback.rating);
-  const averageRating = ratedComplaints.length > 0
-    ? (ratedComplaints.reduce((sum, c) => sum + c.feedback.rating, 0) / ratedComplaints.length).toFixed(1)
-    : 0;
-
-  // Get category breakdown
-  const categoryBreakdown = {};
-  allComplaints.forEach(c => {
-    if (!categoryBreakdown[c.category]) {
-      categoryBreakdown[c.category] = { total: 0, completed: 0 };
-    }
-    categoryBreakdown[c.category].total++;
-    if (c.status === 'Resolved') {
-      categoryBreakdown[c.category].completed++;
-    }
-  });
-
-  const taskBreakdown = Object.keys(categoryBreakdown).map(cat => ({
-    category: cat,
-    total: categoryBreakdown[cat].total,
-    completed: categoryBreakdown[cat].completed,
-    percentage: categoryBreakdown[cat].total > 0
-      ? Math.round((categoryBreakdown[cat].completed / categoryBreakdown[cat].total) * 100)
-      : 0
-  }));
-
-  // Get monthly trend (last 6 months)
-  const monthlyTrend = [];
-  for (let i = 5; i >= 0; i--) {
-    const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
-
-    const monthComplaints = await Complaint.find({
-      workerId,
-      createdAt: { $gte: monthStart, $lte: monthEnd }
-    });
-
-    const monthCompleted = monthComplaints.filter(c => c.status === 'Resolved').length;
-    const monthTotal = monthComplaints.length;
-    const monthEfficiency = monthTotal > 0 ? Math.round((monthCompleted / monthTotal) * 100) : 0;
-
-    monthlyTrend.push({
-      month: monthStart.toLocaleString('en-US', { month: 'short' }),
-      completed: monthCompleted,
-      total: monthTotal,
-      efficiency: monthEfficiency
-    });
-  }
-
-  // Get recent tasks with details
-  const recentTasks = allComplaints.slice(0, 10).map(c => {
-    const createdDate = new Date(c.createdAt);
-    const resolvedEntry = c.timeline?.find(t => t.status === 'Resolved');
-    let completionTime = 'N/A';
-
-    if (resolvedEntry) {
-      const resolvedDate = new Date(resolvedEntry.date);
-      const days = ((resolvedDate - createdDate) / (1000 * 60 * 60 * 24)).toFixed(1);
-      completionTime = `${days} days`;
-    } else if (c.status === 'In Progress') {
-      const currentDays = ((now - createdDate) / (1000 * 60 * 60 * 24)).toFixed(1);
-      completionTime = `${currentDays} days`;
-    }
-
-    return {
-      id: c._id,
-      title: c.title,
-      category: c.category,
-      status: c.status,
-      completionTime,
-      rating: c.feedback?.rating || null,
-      date: c.createdAt
-    };
-  });
-
-  res.status(200).json({
-    success: true,
-    data: {
-      summary: {
-        totalTasks,
-        completedTasks,
-        inProgressTasks,
-        overdueTasks,
-        averageCompletionTime,
-        efficiency,
-        rating: parseFloat(averageRating)
-      },
-      taskBreakdown,
-      monthlyTrend,
-      recentTasks
-    }
-  });
-});
-
-// ============================================================
-// COMMUNITY FEATURES — Public Feed, Upvotes
-// ============================================================
-
-// @desc    Get nearby public complaints
-// @route   GET /api/complaints/nearby
-// @access  Private
-exports.getNearbyComplaints = asyncHandler(async (req, res, next) => {
-  const lat = parseFloat(req.query.lat);
-  const lng = parseFloat(req.query.lng);
-  const radius = parseInt(req.query.radius, 10) || 2000;
-
-  if (!lat || !lng) {
-    return next(new ErrorResponse('Please provide lat and lng coordinates', 400));
-  }
-
-  const complaints = await Complaint.find({
-    isPublic: true,
-    'location.coordinates': {
-      $nearSphere: {
-        $geometry: {
-          type: 'Point',
-          coordinates: [lng, lat],
-        },
-        $maxDistance: radius,
-      },
-    },
-  })
-    .select('-upvotes.supporters')
-    .sort({ 'communityPriority.score': -1 })
-    .limit(50)
-    .populate('citizenId', 'name')
-    .populate('department', 'name')
-    .lean();
-
-  const userId = req.user.id;
-  const userSupportedIds = await Complaint.find({
-    _id: { $in: complaints.map(c => c._id) },
-    'upvotes.supporters.userId': userId,
-  }).select('_id').lean();
-
-  const supportedSet = new Set(userSupportedIds.map(c => c._id.toString()));
-
-  const enrichedComplaints = complaints.map(c => ({
-    ...c,
-    hasUserSupported: supportedSet.has(c._id.toString()),
-  }));
-
-  res.status(200).json({
-    success: true,
-    count: enrichedComplaints.length,
-    data: enrichedComplaints,
-  });
-});
-
-// @desc    Check for similar active complaints (Duplicate Detection)
-// @route   POST /api/complaints/check-similar
-// @access  Private (Citizen)
-exports.checkSimilarComplaints = asyncHandler(async (req, res, next) => {
-  const { title, description, category, lng, lat } = req.body;
-
-  if (!title || !description) {
-    return res.status(400).json({ success: false, message: 'Title and description required' });
-  }
-
-  // 1. Find candidates (Active complaints in the same category)
-  // If coordinates are provided, we could narrow this down geographically, 
-  // but for now let's just grab recent active ones in the category to pass to the AI.
-  const filter = {
-    status: { $nin: ['Resolved', 'Closed'] },
-    isPublic: true
-  };
-
-  if (category && category !== 'Other') {
-    filter.category = category;
-  }
-
-  // Optional: If we have location, only check within 5km
-  if (lng && lat) {
-    filter['location.coordinates'] = {
-      $nearSphere: {
-        $geometry: { type: 'Point', coordinates: [parseFloat(lng), parseFloat(lat)] },
-        $maxDistance: 5000
-      }
-    };
-  }
-
-  const candidates = await Complaint.find(filter)
-    .select('title description category location status upvotes.count createdAt')
-    .sort({ 'communityPriority.score': -1 })
-    .limit(10) // Only send top 10 to Gemini to save tokens/time
-    .lean();
-
-  if (candidates.length === 0) {
-    return res.status(200).json({ success: true, matches: [] });
-  }
-
-  let matches = [];
-  try {
-    // 2. Try Gemini first
-    matches = await findSimilarWithAI(title, description, candidates);
-  } catch (error) {
-    // 3. Fallback to keywords if Gemini fails or times out
-    matches = await findSimilarWithKeywords(title, description, candidates);
-  }
-
-  res.status(200).json({
-    success: true,
-    matches: matches
-  });
-});
-
-// @desc    Get public complaints feed (sorted by community priority)
-// @route   GET /api/complaints/public
-// @access  Private (any authenticated user)
-exports.getPublicComplaints = asyncHandler(async (req, res, next) => {
-  const page = parseInt(req.query.page, 10) || 1;
-  const limit = parseInt(req.query.limit, 10) || 10;
-  const skip = (page - 1) * limit;
-
-  // Build filter
-  const filter = { isPublic: true };
-  if (req.query.category) filter.category = req.query.category;
-  if (req.query.status) filter.status = req.query.status;
-
-  // Build sort
-  let sort = { 'communityPriority.score': -1 }; // Default: highest priority first
-  if (req.query.sort === 'newest') sort = { createdAt: -1 };
-  if (req.query.sort === 'oldest') sort = { createdAt: 1 };
-  if (req.query.sort === 'most-upvoted') sort = { 'upvotes.count': -1 };
-
-  const [complaints, total] = await Promise.all([
-    Complaint.find(filter)
-      .select('-upvotes.supporters') // Privacy: don't expose who supported what
-      .populate('citizenId', 'name')
-      .populate('department', 'name')
-      .sort(sort)
-      .skip(skip)
-      .limit(limit)
-      .lean(),
-    Complaint.countDocuments(filter),
+// @desc    Get public stats for landing page hero
+// @route   GET /api/complaints/public-stats
+// @access  Public
+// Fix #16: Moved from inline route handler to controller for consistent error handling
+exports.getPublicStats = asyncHandler(async (req, res, next) => {
+  const [total, resolved, inProgress] = await Promise.all([
+    Complaint.countDocuments({ isPublic: true }),
+    Complaint.countDocuments({ isPublic: true, status: 'Resolved' }),
+    Complaint.countDocuments({ isPublic: true, status: 'In Progress' }),
   ]);
-
-  // For the current user, check which complaints they have supported
-  const userId = req.user.id;
-  const userSupportedIds = await Complaint.find({
-    _id: { $in: complaints.map(c => c._id) },
-    'upvotes.supporters.userId': userId,
-  }).select('_id').lean();
-
-  const supportedSet = new Set(userSupportedIds.map(c => c._id.toString()));
-
-  const enrichedComplaints = complaints.map(c => ({
-    ...c,
-    hasUserSupported: supportedSet.has(c._id.toString()),
-  }));
-
-  res.status(200).json({
-    success: true,
-    data: enrichedComplaints,
-    pagination: {
-      total,
-      pages: Math.ceil(total / limit),
-      page,
-      limit,
-    },
-  });
+  res.json({ success: true, data: { total, resolved, inProgress } });
 });
 
-// @desc    Upvote (support) a public complaint
-// @route   POST /api/complaints/:id/upvote
-// @access  Private (Citizen)
-exports.upvoteComplaint = asyncHandler(async (req, res, next) => {
-  const complaintId = req.params.id;
-  const userId = req.user.id;
+// ============================================================
+// Re-export split controllers for backward-compatible imports
+// ============================================================
+const communityController = require('./communityController');
+const workerComplaintController = require('./workerComplaintController');
 
-  // Use atomic updates to prevent race conditions.
-  const updatedComplaint = await Complaint.findOneAndUpdate(
-    {
-      _id: complaintId,
-      isPublic: true,
-      'upvotes.supporters.userId': { $ne: userId }
-    },
-    {
-      $addToSet: { 'upvotes.supporters': { userId: userId, supportedAt: new Date() } },
-      $inc: { 'upvotes.count': 1 }
-    },
-    { new: true } // Return updated document for priority calculation
-  );
+// Community features
+exports.getPublicComplaints = communityController.getPublicComplaints;
+exports.getNearbyComplaints = communityController.getNearbyComplaints;
+exports.checkSimilarComplaints = communityController.checkSimilarComplaints;
+exports.upvoteComplaint = communityController.upvoteComplaint;
+exports.removeUpvote = communityController.removeUpvote;
 
-  if (!updatedComplaint) {
-    const exists = await Complaint.findById(complaintId);
-    if (!exists) return next(new ErrorResponse('Complaint not found', 404));
-    if (!exists.isPublic) return next(new ErrorResponse('This complaint is not public', 403));
-    // If it exists and is public, but not updated, user already supported
-    return res.status(409).json({ success: false, message: 'You have already supported this complaint' });
-  }
-
-  // Recalculate community priority based on new values
-  const priority = calculateCommunityPriority(updatedComplaint);
-  updatedComplaint.communityPriority = priority;
-
-  await Complaint.updateOne(
-    { _id: complaintId },
-    { $set: { communityPriority: priority } }
-  );
-
-  res.status(200).json({
-    success: true,
-    data: {
-      upvoteCount: updatedComplaint.upvotes.count,
-      communityPriority: priority,
-    },
-  });
-});
-
-// @desc    Remove upvote from a public complaint
-// @route   DELETE /api/complaints/:id/upvote
-// @access  Private (Citizen)
-exports.removeUpvote = asyncHandler(async (req, res, next) => {
-  const complaintId = req.params.id;
-  const userId = req.user.id;
-
-  const updatedComplaint = await Complaint.findOneAndUpdate(
-    {
-      _id: complaintId,
-      'upvotes.supporters.userId': userId
-    },
-    {
-      $pull: { 'upvotes.supporters': { userId: userId } },
-      $inc: { 'upvotes.count': -1 }
-    },
-    { new: true }
-  );
-
-  if (!updatedComplaint) {
-    const exists = await Complaint.findById(complaintId);
-    if (!exists) return next(new ErrorResponse('Complaint not found', 404));
-    return res.status(409).json({ success: false, message: 'You have not supported this complaint' });
-  }
-
-  // Recalculate community priority based on new values
-  const priority = calculateCommunityPriority(updatedComplaint);
-  updatedComplaint.communityPriority = priority;
-
-  await Complaint.updateOne(
-    { _id: complaintId },
-    { $set: { communityPriority: priority } }
-  );
-
-  res.status(200).json({
-    success: true,
-    data: {
-      upvoteCount: updatedComplaint.upvotes.count,
-      communityPriority: priority,
-    },
-  });
-});
-
+// Worker features
+exports.updateComplaintByWorker = workerComplaintController.updateComplaintByWorker;
+exports.updateComplaintTimeline = workerComplaintController.updateComplaintTimeline;
+exports.getWorkerReports = workerComplaintController.getWorkerReports;
