@@ -7,6 +7,7 @@ const {
   updateUserRole,
   updateUser,
   deleteUser,
+  reactivateUser,
   createUser,
   getDashboardStats,
   getRecentComplaints,
@@ -30,6 +31,7 @@ router.route('/users/:id').get(protect, authorize('admin'), getUser);
 router.route('/users/:id').put(protect, authorize('admin'), updateUser);
 router.route('/users/:id/role').put(protect, authorize('admin'), validate(updateUserRoleSchema), updateUserRole);
 router.route('/users/:id').delete(protect, authorize('admin'), deleteUser);
+router.route('/users/:id/reactivate').put(protect, authorize('admin'), reactivateUser);
 router.route('/users/bulk-delete').post(protect, authorize('admin'), bulkDeleteUsers);
 
 // Complaint Management

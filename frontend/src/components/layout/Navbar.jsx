@@ -1,9 +1,11 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import React, { useEffect, useState } from 'react';
-import { Sun, Moon, Bell, User, Search, Menu, UserCircle, Settings, LogOutIcon } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import React from 'react';
+import { Sun, Moon, Bell, User, Menu, Settings, LogOut, CheckCheck, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/DropdownMenu';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger
+} from '@/components/ui/DropdownMenu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover';
 import { useNotifications } from '@/context/NotificationContext';
 import { useAuth } from '@/hooks/useAuth';
@@ -11,185 +13,208 @@ import { useTheme } from '@/context/ThemeContext';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 
+const getInitials = (name = '') =>
+  name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?';
+
 const Navbar = ({ toggleSidebar }) => {
   const navigate = useNavigate();
-  const location = useLocation();
   const { isDarkMode, toggleDarkMode } = useTheme();
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
   const { user, logout } = useAuth();
 
-  // A handler to navigate to the correct complaint page based on user role
-  const handleNotificationClick = (notification) => {
-    markAsRead(notification._id);
-    if (notification.complaintId) {
-      // Construct role-aware path
-      let path;
-      switch (user.role) {
-        case 'admin':
-          path = `/admin/complaints/${notification.complaintId}`;
-          break;
-        case 'staff':
-          path = `/staff/complaints/${notification.complaintId}`;
-          break;
-        case 'worker':
-          path = `/worker/tasks/${notification.complaintId}`;
-          break;
-        case 'citizen':
-        default:
-          path = `/complaints/${notification.complaintId}`;
-          break;
-      }
-      navigate(path);
-    }
-  };
-
   const getProfilePath = () => {
     switch (user?.role) {
-      case 'admin': return '/admin/profile';
-      case 'staff':
-        return user?.department?.slug
-          ? `/${user.department.slug}/staff/profile`
-          : '/staff/profile';
+      case 'admin':  return '/admin/profile';
+      case 'staff':  return user?.department?.slug ? `/${user.department.slug}/staff/profile` : '/staff/profile';
       case 'worker': return '/worker/profile';
-      case 'citizen':
-        return user?.slug ? `/${user.slug}/profile` : '/profile';
-      default: return '/profile';
+      default:       return user?.slug ? `/${user.slug}/profile` : '/profile';
     }
   };
 
   const getSettingsPath = () => {
     switch (user?.role) {
-      case 'admin': return '/admin/settings';
-      case 'staff':
-        return user?.department?.slug
-          ? `/${user.department.slug}/staff/settings`
-          : '/staff/settings';
+      case 'admin':  return '/admin/settings';
+      case 'staff':  return user?.department?.slug ? `/${user.department.slug}/staff/settings` : '/staff/settings';
       case 'worker': return '/worker/settings';
-      case 'citizen':
-        return user?.slug ? `/${user.slug}/settings` : '/settings';
-      default: return '/settings';
+      default:       return user?.slug ? `/${user.slug}/settings` : '/settings';
     }
   };
 
   const getLogoPath = () => {
     switch (user?.role) {
-      case 'admin': return '/admin';
-      case 'staff':
-        return user?.department?.slug
-          ? `/${user.department.slug}/staff`
-          : '/staff';
+      case 'admin':  return '/admin';
+      case 'staff':  return user?.department?.slug ? `/${user.department.slug}/staff` : '/staff';
       case 'worker': return '/worker';
-      case 'citizen':
-        return user?.slug ? `/${user.slug}/dashboard` : '/dashboard';
-      default: return '/dashboard';
+      default:       return user?.slug ? `/${user.slug}/dashboard` : '/dashboard';
     }
   };
 
+  const handleNotificationClick = (notification) => {
+    markAsRead(notification._id);
+    if (!notification.complaintId) return;
+    const paths = {
+      admin:   `/admin/complaints/${notification.complaintId}`,
+      staff:   `/staff/complaints/${notification.complaintId}`,
+      worker:  `/worker/tasks/${notification.complaintId}`,
+      citizen: `/complaints/${notification.complaintId}`,
+    };
+    navigate(paths[user?.role] ?? paths.citizen);
+  };
+
+  // Navigate first → clear auth in next tick to avoid unmount crash
+  const handleLogout = () => {
+    navigate('/', { replace: true });
+    setTimeout(() => logout(), 0);
+  };
+
   return (
-    <header className="sticky top-0 z-40 glass-navbar">
-      <div className="container mx-auto flex items-center justify-between h-16 px-4 md:px-8">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" className="lg:hidden" onClick={toggleSidebar}>
-            <Menu className="h-6 w-6" />
-          </Button>
-          <Link to={getLogoPath()} className="text-xl font-bold text-blue-600">
-            CivicMitra
+    <header className="sticky top-0 z-40 h-14 bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800">
+      <div className="flex items-center justify-between h-full px-4 md:px-6">
+
+        {/* Left */}
+        <div className="flex items-center gap-3">
+          <button
+            className="lg:hidden p-1.5 rounded-md text-gray-500 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800"
+            onClick={toggleSidebar}
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+
+          <Link to={getLogoPath()} className="flex items-center gap-2">
+            <span className="text-base font-semibold text-gray-900 dark:text-gray-100 tracking-tight">
+              CivicMitra
+            </span>
+            {user?.role && (
+              <span className="text-xs text-gray-400 dark:text-gray-500 capitalize hidden sm:block">
+                / {user.role}
+              </span>
+            )}
           </Link>
         </div>
 
-        <div className="flex items-center space-x-2 md:space-x-4">
-          <Button variant="ghost" size="icon" onClick={toggleDarkMode}>
-            {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-          </Button>
+        {/* Right */}
+        <div className="flex items-center gap-1">
 
+          {/* Theme toggle */}
+          <button
+            onClick={toggleDarkMode}
+            className="p-2 rounded-md text-gray-500 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            title={isDarkMode ? 'Light mode' : 'Dark mode'}
+          >
+            {isDarkMode ? <Sun className="h-4.5 w-4.5" /> : <Moon className="h-[18px] w-[18px]" />}
+          </button>
+
+          {/* Notifications */}
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="ghost" size="icon" className="relative">
+              <button className="relative p-2 rounded-md text-gray-500 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
                 {unreadCount > 0 && (
-                  <span className="absolute top-1 right-1 flex h-3 w-3">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
-                  </span>
+                  <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-500" />
                 )}
-                <Bell className="h-5 w-5" />
-              </Button>
+                <Bell className="h-[18px] w-[18px]" />
+              </button>
             </PopoverTrigger>
-            <PopoverContent className="w-80 md:w-96 glass-card p-0 rounded-xl" align="end">
-              <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                <div className="flex justify-between items-center">
-                  <h4 className="font-semibold leading-none">Notifications</h4>
-                  {unreadCount > 0 && (
-                    <Button variant="link" size="sm" className="p-0 h-auto" onClick={markAllAsRead}>Mark all as read</Button>
-                  )}
-                </div>
-                <p className="text-sm text-muted-foreground mt-1">You have {unreadCount} unread messages.</p>
+            <PopoverContent
+              className="w-80 p-0 rounded-xl shadow-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950"
+              align="end"
+              sideOffset={6}
+            >
+              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Notifications</span>
+                {unreadCount > 0 && (
+                  <button
+                    onClick={markAllAsRead}
+                    className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 flex items-center gap-1"
+                  >
+                    <CheckCheck className="h-3.5 w-3.5" />
+                    Mark all read
+                  </button>
+                )}
               </div>
-              <div className="max-h-80 overflow-y-auto p-2">
-                {notifications.length > 0 ? (
-                  notifications.map((notification) => (
-                    <div
-                      key={notification._id}
-                      className={cn(
-                        "grid grid-cols-[auto_1fr] items-start gap-3 p-3 rounded-lg transition-colors cursor-pointer",
-                        "hover:bg-gray-100 dark:hover:bg-gray-800",
-                        !notification.read && "bg-blue-50 dark:bg-blue-900/20"
-                      )}
-                      onClick={() => handleNotificationClick(notification)}
-                    >
-                      <div className="mt-1">
-                        {!notification.read && (
-                          <span className="block h-2.5 w-2.5 rounded-full bg-blue-500" />
-                        )}
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-sm font-semibold leading-none">{notification.title}</p>
-                        <p className="text-sm text-muted-foreground">{notification.message}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
+
+              <div className="max-h-72 overflow-y-auto divide-y divide-gray-50 dark:divide-gray-800/50">
+                {notifications.length > 0 ? notifications.map((n) => (
+                  <button
+                    key={n._id}
+                    className={cn(
+                      'w-full text-left px-4 py-3 transition-colors hover:bg-gray-50 dark:hover:bg-gray-900',
+                      !n.read && 'bg-blue-50/50 dark:bg-blue-950/20'
+                    )}
+                    onClick={() => handleNotificationClick(n)}
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <span className={cn('mt-1.5 h-1.5 w-1.5 rounded-full flex-shrink-0', !n.read ? 'bg-blue-500' : 'bg-transparent')} />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 leading-snug">{n.title}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2">{n.message}</p>
+                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                          {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
                         </p>
                       </div>
                     </div>
-                  ))
-                ) : (
-                  <div className="text-center p-8 text-sm text-muted-foreground">
-                    You have no new notifications.
+                  </button>
+                )) : (
+                  <div className="px-4 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
+                    No notifications yet
                   </div>
                 )}
               </div>
             </PopoverContent>
           </Popover>
 
+          {/* User menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full overflow-hidden p-0 h-9 w-9">
-                <div className="h-9 w-9 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                  <span className="text-sm font-semibold text-blue-700 dark:text-blue-400">
-                    {user?.name ? user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : <User className="h-4 w-4" />}
+              <button className="flex items-center gap-2 ml-1 px-2 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors focus:outline-none">
+                <div className="h-7 w-7 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
+                  <span className="text-xs font-semibold text-gray-700 dark:text-gray-200">
+                    {getInitials(user?.name)}
                   </span>
                 </div>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg" align="end" forceMount>
-              <DropdownMenuLabel className="font-normal">
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">{user?.name}</p>
-                  <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
+                <div className="hidden md:block text-left">
+                  <p className="text-xs font-medium text-gray-700 dark:text-gray-200 leading-none">
+                    {user?.name?.split(' ')[0]}
+                  </p>
+                  <p className="text-[10px] text-gray-400 dark:text-gray-500 capitalize mt-0.5">
+                    {user?.role}
+                  </p>
                 </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => navigate(getProfilePath())}>
-                <User className="mr-2 h-4 w-4" />
-                <span>Profile</span>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              className="w-52 rounded-xl shadow-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 p-1"
+              align="end"
+              sideOffset={6}
+            >
+              <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-800 mb-1">
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{user?.name}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">{user?.email}</p>
+              </div>
+
+              <DropdownMenuItem
+                onClick={() => navigate(getProfilePath())}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                <User className="h-4 w-4 text-gray-400" />
+                Profile
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate(getSettingsPath())}>
-                <Settings className="mr-2 h-4 w-4" />
-                <span>Settings</span>
+              <DropdownMenuItem
+                onClick={() => navigate(getSettingsPath())}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                <Settings className="h-4 w-4 text-gray-400" />
+                Settings
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => { logout(); navigate('/'); }}>
-                <LogOutIcon className="mr-2 h-4 w-4" />
-                <span>Log out</span>
-              </DropdownMenuItem>
+
+              <div className="border-t border-gray-100 dark:border-gray-800 mt-1 pt-1">
+                <DropdownMenuItem
+                  onClick={handleLogout}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-red-600 dark:text-red-400 cursor-pointer hover:bg-red-50 dark:hover:bg-red-950/30"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Sign out
+                </DropdownMenuItem>
+              </div>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

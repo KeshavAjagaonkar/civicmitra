@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, NavLink, useLocation } from 'react-router-dom';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import {
@@ -60,7 +60,15 @@ const roleLabels = {
 
 const Sidebar = ({ isOpen, onClose }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, logout } = useAuth();
+
+  // LOGOUT FIX: navigate to public page first, clear auth state in next tick
+  const handleLogout = () => {
+    onClose();
+    navigate('/', { replace: true });
+    setTimeout(() => logout(), 0);
+  };
 
   const currentRole = user?.role || 'citizen';
   const navigation = (navItems[currentRole] || navItems.citizen).map((item) => {
@@ -144,7 +152,7 @@ const Sidebar = ({ isOpen, onClose }) => {
             </span>
           </div>
           <button
-            onClick={() => { logout(); onClose(); }}
+            onClick={handleLogout}
             className="p-1.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex-shrink-0"
             title="Log out"
           >

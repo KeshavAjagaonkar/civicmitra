@@ -184,13 +184,24 @@ exports.getUsers = asyncHandler(async (req, res, next) => {
   if (req.query.role) query.role = req.query.role;
   if (req.query.department) query.department = req.query.department;
 
+  // SECURITY: Never expose other admin accounts in the user management list.
+  // Admins should manage Staff/Workers/Citizens, not other Admins.
+  // This prevents accidental or malicious modification of admin accounts.
+  if (!req.query.role) {
+    // Default: show everyone except admins
+    query.role = { $ne: 'admin' };
+  } else if (req.query.role === 'admin') {
+    // Even if explicitly asked, block the admin list from this endpoint
+    return res.status(200).json({ success: true, count: 0, data: [] });
+  }
+
   const users = await User.find(query)
     .select('-password')
     .populate('department', 'name description')
+    .sort({ createdAt: -1 })
     .lean();
 
   // For worker lists, attach active task count so staff can see workload
-  // before assigning. Active = any status that is not Resolved/Closed/Rejected.
   if (req.query.role === 'worker' && users.length > 0) {
     const workerIds = users.map(u => u._id);
     const activeCounts = await Complaint.aggregate([
@@ -237,16 +248,60 @@ exports.getUser = asyncHandler(async (req, res, next) => {
 // @desc    Update user role
 // @route   PUT /api/admin/users/:id/role
 // @access  Private/Admin
+//
+// ROLE TRANSITION RULES:
+// - Staff ↔ Worker : Allowed (both are departmental operational roles)
+// - Citizen → Staff/Worker: BLOCKED (must go through createUser flow with dept assignment)
+// - Any → Citizen: BLOCKED (demoting a staff/worker to citizen is destructively illogical)
+// - Any → Admin: BLOCKED (admin accounts are managed out-of-band)
 exports.updateUserRole = asyncHandler(async (req, res, next) => {
-  const { role } = req.body;
+  const { role: newRole } = req.body;
+
+  // Block all escalation to admin
+  if (newRole === 'admin') {
+    return next(new ErrorResponse('Cannot promote a user to Admin via this endpoint.', 403));
+  }
+
+  // Block demotion to citizen — once operational, a user keeps their role or is deactivated
+  if (newRole === 'citizen') {
+    return next(new ErrorResponse(
+      'Cannot demote a user to Citizen. If this person should no longer be Staff/Worker, deactivate their account instead.',
+      400
+    ));
+  }
 
   const user = await User.findById(req.params.id);
-
   if (!user) {
     return next(new ErrorResponse(`User not found with id of ${req.params.id}`, 404));
   }
 
-  user.role = role;
+  // Block modifying Admin accounts
+  if (user.role === 'admin') {
+    return next(new ErrorResponse('Cannot modify the role of an Admin account.', 403));
+  }
+
+  // Block promoting Citizens through this endpoint — they need dept assignment via createUser
+  if (user.role === 'citizen') {
+    return next(new ErrorResponse(
+      'Cannot promote a Citizen via this endpoint. Use "Create User" to onboard them as Staff or Worker with proper department assignment.',
+      400
+    ));
+  }
+
+  // Only allow Staff ↔ Worker transitions
+  const allowedTransitions = {
+    staff: ['worker'],
+    worker: ['staff'],
+  };
+  const allowed = allowedTransitions[user.role] || [];
+  if (!allowed.includes(newRole)) {
+    return next(new ErrorResponse(
+      `Cannot change role from "${user.role}" to "${newRole}". Allowed: ${allowed.join(', ') || 'none'}.`,
+      400
+    ));
+  }
+
+  user.role = newRole;
   await user.save();
 
   res.status(200).json({
@@ -262,12 +317,20 @@ exports.updateUser = asyncHandler(async (req, res, next) => {
   const { name, email, phone, address, role, department, isActive } = req.body;
 
   const user = await User.findById(req.params.id);
-
   if (!user) {
     return next(new ErrorResponse(`User not found with id of ${req.params.id}`, 404));
   }
 
-  // Update fields if provided
+  // SECURITY: Admin cannot modify another admin's account.
+  if (user.role === 'admin' && user._id.toString() !== req.user.id) {
+    return next(new ErrorResponse('Cannot modify another Admin account.', 403));
+  }
+
+  // Prevent role escalation to admin via this endpoint
+  if (role === 'admin') {
+    return next(new ErrorResponse('Cannot set role to Admin via this endpoint.', 403));
+  }
+
   if (name) user.name = name;
   if (email) user.email = email;
   if (phone) user.phone = phone;
@@ -284,7 +347,7 @@ exports.updateUser = asyncHandler(async (req, res, next) => {
   });
 });
 
-// @desc    Delete user
+// @desc    Deactivate (soft-delete) a user
 // @route   DELETE /api/admin/users/:id
 // @access  Private/Admin
 exports.deleteUser = asyncHandler(async (req, res, next) => {
@@ -294,21 +357,58 @@ exports.deleteUser = asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse(`User not found with id of ${req.params.id}`, 404));
   }
 
-  // Don't allow deleting yourself
+  // Cannot deactivate yourself
   if (user._id.toString() === req.user.id) {
-    return next(new ErrorResponse('Cannot delete your own account', 400));
+    return next(new ErrorResponse('Cannot deactivate your own account', 400));
   }
 
-  await user.deleteOne();
+  // SECURITY: Cannot deactivate another admin account
+  if (user.role === 'admin') {
+    return next(new ErrorResponse('Cannot deactivate an Admin account.', 403));
+  }
+
+  // TRANSPARENCY: Soft-deactivate instead of hard-delete.
+  // The account remains in the DB as an audit trail.
+  // Citizens/Staff/Workers are not permanently erased — they can be reinstated.
+  user.isActive = false;
+  user.deactivatedAt = new Date();
+  user.deactivatedBy = req.user.id;
+  await user.save();
 
   res.status(200).json({
     success: true,
-    message: 'User deleted successfully',
-    data: {},
+    message: `User account for "${user.name}" has been deactivated. They can no longer log in.`,
+    data: { _id: user._id, isActive: false },
   });
 });
 
-// @desc    Bulk delete users
+// @desc    Reactivate a deactivated user
+// @route   PUT /api/admin/users/:id/reactivate
+// @access  Private/Admin
+exports.reactivateUser = asyncHandler(async (req, res, next) => {
+  const user = await User.findById(req.params.id);
+
+  if (!user) {
+    return next(new ErrorResponse(`User not found`, 404));
+  }
+
+  if (user.isActive) {
+    return next(new ErrorResponse('User account is already active.', 400));
+  }
+
+  user.isActive = true;
+  user.deactivatedAt = undefined;
+  user.deactivatedBy = undefined;
+  await user.save();
+
+  res.status(200).json({
+    success: true,
+    message: `User account for "${user.name}" has been reactivated.`,
+    data: { _id: user._id, isActive: true },
+  });
+});
+
+// @desc    Bulk deactivate users (soft-delete)
 // @route   POST /api/admin/users/bulk-delete
 // @access  Private/Admin
 exports.bulkDeleteUsers = asyncHandler(async (req, res, next) => {
@@ -318,17 +418,27 @@ exports.bulkDeleteUsers = asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse('Please provide an array of user IDs', 400));
   }
 
-  // Don't allow deleting yourself
+  // Cannot deactivate yourself
   if (userIds.includes(req.user.id)) {
-    return next(new ErrorResponse('Cannot delete your own account', 400));
+    return next(new ErrorResponse('Cannot deactivate your own account', 400));
   }
 
-  const result = await User.deleteMany({ _id: { $in: userIds } });
+  // Fetch users and validate none are admins
+  const users = await User.find({ _id: { $in: userIds } });
+  const hasAdmin = users.some(u => u.role === 'admin');
+  if (hasAdmin) {
+    return next(new ErrorResponse('Cannot deactivate Admin accounts in bulk.', 403));
+  }
+
+  const result = await User.updateMany(
+    { _id: { $in: userIds }, role: { $ne: 'admin' } },
+    { $set: { isActive: false, deactivatedAt: new Date(), deactivatedBy: req.user.id } }
+  );
 
   res.status(200).json({
     success: true,
-    message: `${result.deletedCount} user(s) deleted successfully`,
-    data: { deletedCount: result.deletedCount },
+    message: `${result.modifiedCount} user(s) deactivated successfully`,
+    data: { deactivatedCount: result.modifiedCount },
   });
 });
 
