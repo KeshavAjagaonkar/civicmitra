@@ -21,31 +21,42 @@ exports.classifyComplaint = async (title, description, category) => {
       return getFallbackClassification(category);
     }
 
-    const prompt = `You are an AI assistant for an Indian Municipal Corporation complaint management system.
-Analyze the following complaint and provide classification details:
+    const validCategories = CATEGORIES.join(', ');
 
-Title: ${title}
-Description: ${description}
-User-selected Category: ${category}
+    const prompt = `You are an expert complaint classifier for an Indian Municipal Corporation.
 
-Based on this information, provide a JSON response with:
-1. "category" - The most appropriate category from: [${CATEGORIES.join(', ')}]
-2. "department" - The responsible department ID (use null for now, will be mapped later)
-3. "priority" - Priority level: High/Medium/Low based on urgency and public impact
-4. "confidence" - Your confidence level (0-100) in this classification
-5. "reasoning" - Brief explanation of your classification
+TASK: Classify this civic complaint and assign a priority level.
 
-Consider factors like:
-- Public safety impact (higher priority)
-- Number of people affected
-- Urgency indicated in the description
-- Infrastructure criticality
+COMPLAINT:
+- Title: "${title}"
+- Description: "${description}"
+- Citizen-selected Category: "${category}"
 
-Respond only with valid JSON:`;
+INSTRUCTIONS:
+1. Pick the BEST category from EXACTLY this list: [${validCategories}]
+   - If the citizen's choice is accurate, keep it.
+   - Only override if the description clearly belongs to a different category.
+2. Assign priority based on these rules:
+   - "High": Immediate public safety risk, health hazard, affects many people, infrastructure collapse, sewage overflow, exposed electrical wires, contaminated water supply
+   - "Medium": Significant inconvenience but no immediate danger — potholes, broken street lights, irregular garbage collection, minor drainage issues
+   - "Low": Cosmetic issues, minor complaints, informational requests, single-location problems with low urgency
+3. Provide a confidence score (0-100) and a 1-sentence reasoning.
+
+Respond with a JSON object containing these exact keys:
+{
+  "category": "<one of the valid categories>",
+  "priority": "<High|Medium|Low>",
+  "confidence": <number 0-100>,
+  "reasoning": "<1 sentence explaining classification>"
+}`;
 
     const response = await client.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-2.0-flash',
       contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+        temperature: 0.2,
+      },
     });
 
     const text = response.text;
@@ -61,18 +72,24 @@ Respond only with valid JSON:`;
 
       const parsedResponse = JSON.parse(cleanedText);
 
-      if (parsedResponse.category && parsedResponse.priority) {
-        return {
-          category: parsedResponse.category,
-          department: null,
-          priority: parsedResponse.priority,
-          confidence: parsedResponse.confidence || 75,
-          reasoning: parsedResponse.reasoning || 'AI classification',
-          aiClassified: true
-        };
-      } else {
-        throw new Error('Invalid AI response format');
-      }
+      // Validate category is in allowed list
+      const validCategory = CATEGORIES.includes(parsedResponse.category)
+        ? parsedResponse.category
+        : category; // Fall back to user's choice if AI returns invalid category
+
+      // Validate priority
+      const validPriority = ['High', 'Medium', 'Low'].includes(parsedResponse.priority)
+        ? parsedResponse.priority
+        : 'Medium';
+
+      return {
+        category: validCategory,
+        department: null,
+        priority: validPriority,
+        confidence: Math.min(100, Math.max(0, parsedResponse.confidence || 75)),
+        reasoning: parsedResponse.reasoning || 'AI classification',
+        aiClassified: true
+      };
     } catch (parseError) {
       console.error('[AI Classify] Parse error:', parseError.message);
       return getFallbackClassification(category);
@@ -89,37 +106,66 @@ Respond only with valid JSON:`;
  */
 const getFallbackClassification = (category) => {
   const categoryMapping = {
-    'Roads': { priority: 'Medium', department: null },
-    'Water Supply': { priority: 'High', department: null },
-    'Sanitation': { priority: 'High', department: null },
-    'Electricity': { priority: 'Medium', department: null },
-    'Public Health': { priority: 'High', department: null },
-    'Street Lights': { priority: 'Low', department: null },
-    'Drainage': { priority: 'High', department: null },
-    'Garbage': { priority: 'Medium', department: null },
-    'Other': { priority: 'Medium', department: null }
+    'Roads': { priority: 'Medium' },
+    'Water Supply': { priority: 'High' },
+    'Sanitation': { priority: 'High' },
+    'Electricity': { priority: 'Medium' },
+    'Public Health': { priority: 'High' },
+    'Street Lights': { priority: 'Low' },
+    'Drainage': { priority: 'High' },
+    'Garbage': { priority: 'Medium' },
+    'Other': { priority: 'Medium' }
   };
 
-  const mapping = categoryMapping[category] || { priority: 'Medium', department: null };
+  const mapping = categoryMapping[category] || { priority: 'Medium' };
 
   return {
     category: category,
-    department: mapping.department,
+    department: null,
     priority: mapping.priority,
     confidence: 60,
-    reasoning: 'Rule-based classification (fallback)',
+    reasoning: 'Rule-based classification (AI unavailable)',
     aiClassified: false
   };
 };
 
 /**
  * Get department ID by category — queries DB so admins control routing without code changes.
+ * 
+ * Strategy (ordered by priority):
+ * 1. Exact match: Department.categories array includes the complaint category
+ * 2. Fuzzy match: Department name contains the category keyword (e.g., "Water Supply" → "Water Supply Department")
+ * 3. Null: No matching department — complaint goes to "Pending Assignment"
  */
 exports.getDepartmentByCategory = async (category) => {
   try {
     const Department = require('../models/Department');
-    const department = await Department.findOne({ categories: category }).select('_id');
-    return department ? department._id : null;
+    
+    // Strategy 1: Exact category match (admin-configured)
+    const exactMatch = await Department.findOne({ categories: category }).select('_id name');
+    if (exactMatch) {
+      console.log(`[Dept Routing] "${category}" → "${exactMatch.name}" (exact category match)`);
+      return exactMatch._id;
+    }
+
+    // Strategy 2: Fuzzy match on department name
+    // "Water Supply" complaint → matches "Water Supply Department" or "Water & Sanitation"
+    const words = category.split(/\s+/).filter(w => w.length > 2); // skip short words like "of", "and"
+    if (words.length > 0) {
+      const regexPattern = words.map(w => `(?=.*${w})`).join('');
+      const fuzzyMatch = await Department.findOne({
+        name: { $regex: regexPattern, $options: 'i' }
+      }).select('_id name');
+      
+      if (fuzzyMatch) {
+        console.log(`[Dept Routing] "${category}" → "${fuzzyMatch.name}" (fuzzy name match)`);
+        return fuzzyMatch._id;
+      }
+    }
+
+    // Strategy 3: No match found
+    console.warn(`[Dept Routing] No department found for category "${category}". Admin should assign categories to departments in Department Management.`);
+    return null;
   } catch (error) {
     console.error('[Department Lookup] Failed:', error.message);
     return null;
@@ -136,33 +182,32 @@ exports.summarizeComplaint = async (title, description, location, category) => {
       return null;
     }
 
-    const prompt = `You are an AI assistant for a municipal complaint management system.
-Analyze the following complaint and provide a concise summary:
+    const prompt = `You are an AI assistant for an Indian municipal complaint management system.
+Summarize this civic complaint concisely for staff review.
 
-Title: ${title}
-Description: ${description}
-Location: ${location}
-Category: ${category}
+Complaint:
+- Title: "${title}"
+- Description: "${description}"
+- Location: "${location}"
+- Category: "${category}"
 
-Provide a JSON response with:
-1. "shortSummary" - A single clear sentence (max 150 characters) summarizing the main issue
-2. "keyPoints" - Array of 3-5 bullet points highlighting the most important details
-3. "mainIssue" - The core problem in 2-3 words (e.g., "Broken street light", "Water leakage")
-4. "urgency" - Urgency level: "Low", "Medium", "High", or "Critical"
-5. "sentiment" - Citizen's tone: "Neutral", "Concerned", "Frustrated", "Angry", or "Urgent"
-6. "affectedArea" - Estimated scope: "Single location", "Street", "Neighborhood", "Multiple areas"
-
-Focus on:
-- Extracting factual information
-- Identifying safety or health concerns
-- Detecting urgency indicators
-- Understanding citizen frustration level
-
-Respond only with valid JSON.`;
+Respond with a JSON object:
+{
+  "shortSummary": "<single clear sentence, max 150 chars, summarizing the main issue>",
+  "keyPoints": ["<point 1>", "<point 2>", "<point 3>"],
+  "mainIssue": "<core problem in 2-3 words>",
+  "urgency": "<Low|Medium|High|Critical>",
+  "sentiment": "<Neutral|Concerned|Frustrated|Angry|Urgent>",
+  "affectedArea": "<Single location|Street|Neighborhood|Multiple areas>"
+}`;
 
     const response = await client.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-2.0-flash',
       contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+        temperature: 0.3,
+      },
     });
 
     const text = response.text;

@@ -11,7 +11,7 @@ import FormFieldBox from '@/components/FormFieldBox';
 import useApi from '@/hooks/useApi';
 import { useToast } from '@/components/ui/use-toast';
 import { ArrowLeft, Star, Sparkles, AlertCircle, MapPin, TrendingUp } from 'lucide-react';
-import { STATUS_BADGE_VARIANT, PRIORITY_CLASSES } from '@/lib/constants';
+import { STATUS_BADGE_VARIANT, PRIORITY_CLASSES, VALID_TRANSITIONS } from '@/lib/constants';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/Dialog';
 import { useAuth } from '@/hooks/useAuth';
 import 'leaflet/dist/leaflet.css';
@@ -339,13 +339,12 @@ const ComplaintDetails = () => {
                         <SelectValue placeholder="Select status" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Under Review">Under Review</SelectItem>
-                        <SelectItem value="Needs Info">Needs Info</SelectItem>
-                        <SelectItem value="In Progress">In Progress</SelectItem>
-                        <SelectItem value="Transferred">Transferred</SelectItem>
-                        <SelectItem value="Resolved">Resolved</SelectItem>
-                        <SelectItem value="Rejected">Rejected</SelectItem>
-                        <SelectItem value="Closed">Closed</SelectItem>
+                        {(VALID_TRANSITIONS[complaint.status] || []).map(nextStatus => (
+                          <SelectItem key={nextStatus} value={nextStatus}>{nextStatus}</SelectItem>
+                        ))}
+                        {(VALID_TRANSITIONS[complaint.status] || []).length === 0 && (
+                          <div className="px-3 py-2 text-xs text-gray-500">No transitions available</div>
+                        )}
                       </SelectContent>
                     </Select>
                   )

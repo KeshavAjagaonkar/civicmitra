@@ -139,7 +139,7 @@ const WorkerManagement = () => {
   // Determine if a worker is active based on assigned complaints
   const isWorkerActive = (workerId) => {
     return complaints.some(c =>
-      c.workerId?._id === workerId &&
+      c.workerId?._id?.toString() === workerId?.toString() &&
       c.status !== 'Resolved' &&
       c.status !== 'Closed'
     );
@@ -148,7 +148,7 @@ const WorkerManagement = () => {
   // Get assigned complaint count for a worker
   const getAssignedCount = (workerId) => {
     return complaints.filter(c =>
-      c.workerId?._id === workerId &&
+      c.workerId?._id?.toString() === workerId?.toString() &&
       c.status !== 'Resolved' &&
       c.status !== 'Closed'
     ).length;

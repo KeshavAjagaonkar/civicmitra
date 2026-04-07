@@ -59,12 +59,11 @@ exports.register = asyncHandler(async (req, res, next) => {
 
   const user = await User.create(userData);
 
-  // Send welcome email for citizens (non-blocking)
-  try {
-    await sendWelcomeEmail(user);
-  } catch (emailError) {
-    // Email failed — registration still succeeds
-  }
+  // Fire-and-forget welcome email — do NOT await, so registration response is instant
+  // On slow SMTP (e.g., Render free tier), awaiting this can hang the response for 30+ seconds
+  sendWelcomeEmail(user).catch(emailError => {
+    console.error('[Register] Welcome email failed (non-blocking):', emailError.message);
+  });
 
   sendTokenResponse(user, 201, res);
 });

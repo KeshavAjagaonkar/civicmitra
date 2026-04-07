@@ -61,3 +61,19 @@ export const PRIORITY_CLASSES = {
   Medium: 'bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800',
   Low: 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800',
 };
+
+/**
+ * Valid state transitions — must match backend VALID_TRANSITIONS in complaintController.js.
+ * Used by the status dropdown to show only legal next states.
+ */
+export const VALID_TRANSITIONS = {
+  'Submitted':     ['Under Review', 'Rejected', 'In Progress', 'Transferred'],
+  'Under Review':  ['Needs Info', 'In Progress', 'Rejected', 'Transferred'],
+  'Needs Info':    ['Under Review', 'Rejected'],
+  'In Progress':   ['Resolved', 'Under Review'],
+  'Resolved':      ['Closed', 'Reopened'],
+  'Reopened':      ['In Progress', 'Rejected'],
+  'Transferred':   [],
+  'Rejected':      [],
+  'Closed':        [],
+};
