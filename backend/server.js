@@ -26,19 +26,22 @@ const allowedOrigins = [
   process.env.FRONTEND_URL,
 ].filter(Boolean); // This ensures that if FRONTEND_URL is not set, it's simply ignored.
 
-
-
 const corsOptions = {
   origin: function (origin, callback) {
     // Allow requests with no origin (e.g., mobile apps, Postman)
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
+    if (!origin) return callback(null, true);
+
+    // Allow any exact match from the allowlist
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+
+    // Allow any Vercel preview/production deployment for this project
+    if (/\.vercel\.app$/.test(origin)) return callback(null, true);
+
+    callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
 };
+
 // --- END OF CORRECTION ---
 
 // Set up Socket.IO with the same CORS options
