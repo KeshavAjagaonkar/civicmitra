@@ -135,49 +135,25 @@ const CitizenDashboard = () => {
 
       {/* KPI Cards */}
       {!loading && (
-      <div className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-        {kpiData.map((kpi, index) => (
-          <Card key={kpi.title} className="card-elevated relative overflow-hidden">
-            {/* Background Pattern */}
-            <div className="absolute top-0 right-0 w-24 h-24 opacity-10">
-              <div className={`w-full h-full rounded-full ${kpi.bgColor} transform translate-x-8 -translate-y-8`}></div>
-            </div>
-            
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 relative z-10">
-              <CardTitle className="text-sm font-semibold text-gray-600 dark:text-gray-400">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+        {kpiData.map((kpi) => (
+          <Card key={kpi.title}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">
                 {kpi.title}
               </CardTitle>
-              <div className={`p-2 rounded-lg ${kpi.bgColor}/10`}>
-                <kpi.icon className={`h-5 w-5 ${kpi.color}`} />
-              </div>
+              <kpi.icon className="h-4 w-4 text-gray-400" />
             </CardHeader>
-            
-            <CardContent className="relative z-10">
-              <div className="flex items-baseline justify-between mb-3">
-                <div className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-gray-100">
-                  {kpi.value}
-                </div>
-                {kpi.trendIcon && (
-                  <div className={`flex items-center text-xs ${kpi.trendColor}`}>
-                    <kpi.trendIcon className="h-3 w-3 mr-1" />
-                    <span className="font-medium">{kpi.trend}</span>
-                  </div>
-                )}
+            <CardContent>
+              <div className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
+                {kpi.value}
               </div>
-              
-              {/* Progress Bar for Resolved */}
-              {kpi.percentage && (
-                <div className="progress-bar mb-2">
-                  <div 
-                    className="progress-fill" 
-                    style={{ width: `${kpi.percentage}%` }}
-                  ></div>
+              <p className="text-xs text-gray-500 mt-1">{kpi.trend}</p>
+              {kpi.percentage ? (
+                <div className="progress-bar mt-2">
+                  <div className="progress-fill" style={{ width: `${kpi.percentage}%` }} />
                 </div>
-              )}
-              
-              <p className={`text-xs font-medium ${kpi.trendColor || 'text-gray-500'}`}>
-                {kpi.trend}
-              </p>
+              ) : null}
             </CardContent>
           </Card>
         ))}
@@ -195,7 +171,7 @@ const CitizenDashboard = () => {
             <Link to={`${base}/complaints/create`} className="w-full">
               <Button
                 variant="outline"
-                className="w-full h-20 md:h-24 flex flex-col items-center justify-center gap-2 rounded-2xl hover:shadow-lg transition-all hover:scale-105"
+                className="w-full h-20 flex flex-col items-center justify-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
               >
                 <FileText className="w-6 h-6 md:w-8 md:h-8" />
                 <span className="text-sm font-medium">File Complaint</span>
@@ -204,7 +180,7 @@ const CitizenDashboard = () => {
             <Link to={`${base}/complaints`} className="w-full">
               <Button
                 variant="outline"
-                className="w-full h-20 md:h-24 flex flex-col items-center justify-center gap-2 rounded-2xl hover:shadow-lg transition-all hover:scale-105"
+                className="w-full h-20 flex flex-col items-center justify-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
               >
                 <CheckCircle className="w-6 h-6 md:w-8 md:h-8" />
                 <span className="text-sm font-medium">My Complaints</span>
@@ -213,7 +189,7 @@ const CitizenDashboard = () => {
             <Link to={`${base}/feedback`} className="w-full">
               <Button
                 variant="outline"
-                className="w-full h-20 md:h-24 flex flex-col items-center justify-center gap-2 rounded-2xl hover:shadow-lg transition-all hover:scale-105"
+                className="w-full h-20 flex flex-col items-center justify-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
               >
                 <Clock className="w-6 h-6 md:w-8 md:h-8" />
                 <span className="text-sm font-medium">Give Feedback</span>
@@ -222,7 +198,7 @@ const CitizenDashboard = () => {
             <Link to={`${base}/profile`} className="w-full">
               <Button
                 variant="outline"
-                className="w-full h-20 md:h-24 flex flex-col items-center justify-center gap-2 rounded-2xl hover:shadow-lg transition-all hover:scale-105"
+                className="w-full h-20 flex flex-col items-center justify-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
               >
                 <FileText className="w-6 h-6 md:w-8 md:h-8" />
                 <span className="text-sm font-medium">Profile</span>

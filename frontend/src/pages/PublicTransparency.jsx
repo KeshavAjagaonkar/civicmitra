@@ -15,7 +15,7 @@ const PublicTransparency = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
     fetch(`${backendUrl}/api/public/accountability`)
       .then(r => r.json())
       .then(json => {

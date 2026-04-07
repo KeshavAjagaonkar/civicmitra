@@ -200,114 +200,105 @@ const AdminDashboard = () => {
       </div>
 
       {/* Key Metrics */}
-      <div className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="card-elevated relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-24 h-24 opacity-10">
-            <div className="w-full h-full rounded-full bg-blue-500 transform translate-x-8 -translate-y-8" />
-          </div>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 relative z-10">
-            <CardTitle className="text-sm font-semibold text-gray-600 dark:text-gray-400">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">
               Total Complaints
             </CardTitle>
-            <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/20">
-              <FileText className="h-5 w-5 text-blue-600" />
-            </div>
+            <FileText className="h-4 w-4 text-gray-400" />
           </CardHeader>
-          <CardContent className="relative z-10">
-            <div className="flex items-baseline justify-between mb-2">
-              <div className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-gray-100">
-                {currentData.totalComplaints.toLocaleString()}
-              </div>
-              <div className="flex items-center text-xs text-blue-600">
-                <TrendingUp className="h-3 w-3 mr-1" />
-                <span className="font-medium">+8.2%</span>
-              </div>
+          <CardContent>
+            <div className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
+              {currentData.totalComplaints.toLocaleString()}
             </div>
-            <p className="text-xs font-medium text-blue-600">
+            <p className="text-xs text-gray-500 mt-1">
               {selectedPeriod === 'thisMonth' ? 'This month' :
                selectedPeriod === 'lastMonth' ? 'Last month' : 'This year'}
             </p>
           </CardContent>
         </Card>
 
-        <Card className="kpi-card-solid hover:shadow-lg transition-shadow duration-200">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">Resolved</CardTitle>
-            <CheckCircle className="h-5 w-5 text-green-500" />
+            <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">Resolved</CardTitle>
+            <CheckCircle className="h-4 w-4 text-gray-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl md:text-3xl font-bold text-green-600">{currentData.resolvedComplaints.toLocaleString()}</div>
+            <div className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{currentData.resolvedComplaints.toLocaleString()}</div>
             <p className="text-xs text-gray-500 mt-1">
-              {Math.round((currentData.resolvedComplaints / currentData.totalComplaints) * 100)}% resolution rate
+              {currentData.totalComplaints > 0
+                ? `${Math.round((currentData.resolvedComplaints / currentData.totalComplaints) * 100)}% resolution rate`
+                : '0% resolution rate'}
             </p>
           </CardContent>
         </Card>
 
-        <Card className="kpi-card-solid hover:shadow-lg transition-shadow duration-200">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">Pending</CardTitle>
-            <Clock className="h-5 w-5 text-orange-500" />
+            <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">Pending</CardTitle>
+            <Clock className="h-4 w-4 text-gray-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl md:text-3xl font-bold text-orange-600">{currentData.pendingComplaints}</div>
+            <div className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{currentData.pendingComplaints}</div>
             <p className="text-xs text-gray-500 mt-1">Awaiting resolution</p>
           </CardContent>
         </Card>
 
-        <Card className="kpi-card-solid hover:shadow-lg transition-shadow duration-200">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">Avg. Resolution</CardTitle>
-            <TrendingUp className="h-5 w-5 text-blue-500" />
+            <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">Avg. Resolution</CardTitle>
+            <TrendingUp className="h-4 w-4 text-gray-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl md:text-3xl font-bold text-blue-600">{currentData.averageResolutionTime}</div>
+            <div className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{currentData.averageResolutionTime}</div>
             <p className="text-xs text-gray-500 mt-1">Per complaint</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Secondary Metrics */}
-      <div className="grid gap-4 sm:gap-6 md:grid-cols-4">
-        <Card className="kpi-card-solid">
+      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">Total Users</CardTitle>
-            <Users className="h-5 w-5 text-purple-500" />
+            <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Users</CardTitle>
+            <Users className="h-4 w-4 text-gray-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{currentData.totalUsers}</div>
+            <div className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{currentData.totalUsers}</div>
             <p className="text-xs text-gray-500 mt-1">+{currentData.newUsers} this month</p>
           </CardContent>
         </Card>
 
-        <Card className="kpi-card-solid">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">Departments</CardTitle>
-            <Building className="h-5 w-5 text-indigo-500" />
+            <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">Departments</CardTitle>
+            <Building className="h-4 w-4 text-gray-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{currentData.totalDepartments}</div>
+            <div className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{currentData.totalDepartments}</div>
             <p className="text-xs text-gray-500 mt-1">Active departments</p>
           </CardContent>
         </Card>
 
-        <Card className="kpi-card-solid">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">Active Workers</CardTitle>
-            <Users className="h-5 w-5 text-green-500" />
+            <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">Active Workers</CardTitle>
+            <Users className="h-4 w-4 text-gray-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{currentData.activeWorkers}</div>
+            <div className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{currentData.activeWorkers}</div>
             <p className="text-xs text-gray-500 mt-1">Field workers</p>
           </CardContent>
         </Card>
 
-        <Card className="kpi-card-solid">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">Satisfaction</CardTitle>
-            <BarChart3 className="h-5 w-5 text-yellow-500" />
+            <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">Satisfaction</CardTitle>
+            <BarChart3 className="h-4 w-4 text-gray-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{currentData.satisfactionRating}/5</div>
+            <div className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{currentData.satisfactionRating}/5</div>
             <p className="text-xs text-gray-500 mt-1">Average rating</p>
           </CardContent>
         </Card>

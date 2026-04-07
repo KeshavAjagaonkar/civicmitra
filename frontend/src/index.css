@@ -22,12 +22,10 @@ html {
 @layer components {
 
   /* ===== CARD SYSTEM ===== */
-  .glass-card, .card {
-    @apply bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-sm;
-  }
-
-  .card-elevated {
-    @apply bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-sm;
+  /* glass-card and all its aliases resolve to the same flat card style.
+     Use the shadcn <Card> component which uses .glass-card internally. */
+  .glass-card, .card, .card-elevated, .kpi-card-solid, .value-card-style, .stat-card {
+    @apply bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg;
   }
 
   /* ===== NAVIGATION ===== */

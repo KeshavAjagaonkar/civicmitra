@@ -153,15 +153,15 @@ const WorkerDashboard = () => {
       </div>
 
       {/* Performance KPI Cards */}
-      <div className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-3">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
         {kpiData.map((kpi) => (
-          <Card key={kpi.title} className="kpi-card-solid hover:shadow-lg transition-shadow duration-200">
+          <Card key={kpi.title}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-500">{kpi.title}</CardTitle>
-              <kpi.icon className={`h-5 w-5 ${kpi.color}`} />
+              <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">{kpi.title}</CardTitle>
+              <kpi.icon className="h-4 w-4 text-gray-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl md:text-3xl font-bold">{kpi.value}</div>
+              <div className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{kpi.value}</div>
             </CardContent>
           </Card>
         ))}
