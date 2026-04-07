@@ -17,12 +17,15 @@ const PublicTransparency = () => {
   useEffect(() => {
     const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
     fetch(`${backendUrl}/api/public/accountability`)
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error(`Server responded with ${r.status}`);
+        return r.json();
+      })
       .then(json => {
-        if (json.success) setData(json.data);
+        if (json.success && json.data) setData(json.data);
         else setError('Failed to load data');
       })
-      .catch(() => setError('Could not connect to server'))
+      .catch((err) => setError(err.message || 'Could not connect to server'))
       .finally(() => setLoading(false));
   }, []);
 
@@ -34,18 +37,19 @@ const PublicTransparency = () => {
     );
   }
 
-  if (error) {
+  if (error || !data) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <AlertTriangle className="w-10 h-10 text-red-500 mx-auto mb-3" />
-          <p className="text-lg font-medium text-gray-700">{error}</p>
+          <p className="text-lg font-medium text-gray-700">{error || 'No data available'}</p>
+          <p className="text-sm text-gray-500 mt-2">The transparency dashboard could not load. Please try again later.</p>
         </div>
       </div>
     );
   }
 
-  const { summary, departments, categories, monthlyTrend } = data;
+  const { summary = {}, departments = [], categories = [], monthlyTrend = [] } = data;
 
   const getResolutionColor = (rate) => {
     if (rate >= 70) return 'text-green-600';
@@ -74,10 +78,10 @@ const PublicTransparency = () => {
         {/* Summary KPIs */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { label: 'Total Complaints', value: summary.totalComplaints, icon: BarChart2, color: 'text-blue-600' },
-            { label: 'Resolved', value: summary.resolvedComplaints, icon: CheckCircle, color: 'text-green-600' },
-            { label: 'Still Active', value: summary.activeComplaints, icon: Clock, color: 'text-amber-600' },
-            { label: 'Resolution Rate', value: `${summary.overallResolutionRate}%`, icon: TrendingUp, color: summary.overallResolutionRate >= 60 ? 'text-green-600' : 'text-red-600' },
+            { label: 'Total Complaints', value: summary.totalComplaints || 0, icon: BarChart2, color: 'text-blue-600' },
+            { label: 'Resolved', value: summary.resolvedComplaints || 0, icon: CheckCircle, color: 'text-green-600' },
+            { label: 'Still Active', value: summary.activeComplaints || 0, icon: Clock, color: 'text-amber-600' },
+            { label: 'Resolution Rate', value: `${summary.overallResolutionRate || 0}%`, icon: TrendingUp, color: (summary.overallResolutionRate || 0) >= 60 ? 'text-green-600' : 'text-red-600' },
           ].map(kpi => (
             <Card key={kpi.label} className="bg-white dark:bg-gray-900 border rounded-lg shadow-sm">
               <CardContent className="pt-6">

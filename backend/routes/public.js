@@ -58,7 +58,7 @@ router.get('/accountability', asyncHandler(async (req, res) => {
         foreignField: '_id',
         as: 'dept',
       }},
-      { $unwind: { path: '$dept', preserveNullAndEmpty: true } },
+      { $unwind: { path: '$dept', preserveNullAndEmptyArrays: true } },
       { $project: {
         name: { $ifNull: ['$dept.name', 'Unknown Department'] },
         total: 1,

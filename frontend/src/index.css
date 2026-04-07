@@ -210,9 +210,14 @@ html {
   .leaflet-popup-tip {
     @apply bg-white !important;
   }
+}
 
-  /* Constrain Leaflet z-index so map tiles don't bleed above modals/dialogs */
-  .leaflet-container {
-    z-index: 0 !important;
-  }
+/* ===== LEAFLET Z-INDEX ISOLATION =====
+   Leaflet panes use z-indexes of 200–800 internally (tile-pane: 200, overlay: 400, etc).
+   These escape the normal stacking context and bleed above Radix Dialog overlays (z-50).
+   We isolate ALL Leaflet containers so their internal z-indexes stay contained. */
+.leaflet-container {
+  isolation: isolate;
+  z-index: 0 !important;
+  position: relative;
 }
