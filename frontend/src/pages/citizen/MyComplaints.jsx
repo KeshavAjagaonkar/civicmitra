@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { Eye, MessageCircle, Star, Loader2, FileText, Zap, CheckCircle, Archive, Circle } from 'lucide-react';
+import { Eye, MessageCircle, Star, Loader2, FileText, Zap, CheckCircle, Archive, Circle, AlertCircle, ArrowRightLeft, RotateCcw, XCircle } from 'lucide-react';
 import useApi from '@/hooks/useApi';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -55,10 +55,20 @@ const MyComplaints = () => {
     switch (status) {
       case 'Submitted':
         return <Badge variant="secondary" className="flex items-center gap-1"><FileText className="w-3 h-3" /> Submitted</Badge>;
+      case 'Under Review':
+        return <Badge variant="secondary" className="flex items-center gap-1 bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400"><Eye className="w-3 h-3" /> Under Review</Badge>;
+      case 'Needs Info':
+        return <Badge variant="warning" className="flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Needs Info</Badge>;
       case 'In Progress':
         return <Badge variant="warning" className="flex items-center gap-1"><Zap className="w-3 h-3" /> In Progress</Badge>;
+      case 'Transferred':
+        return <Badge variant="secondary" className="flex items-center gap-1 bg-purple-100 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400"><ArrowRightLeft className="w-3 h-3" /> Transferred</Badge>;
       case 'Resolved':
         return <Badge variant="success" className="flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Resolved</Badge>;
+      case 'Reopened':
+        return <Badge variant="warning" className="flex items-center gap-1 bg-orange-100 text-orange-700 dark:bg-orange-900/20 dark:text-orange-400"><RotateCcw className="w-3 h-3" /> Reopened</Badge>;
+      case 'Rejected':
+        return <Badge variant="destructive" className="flex items-center gap-1"><XCircle className="w-3 h-3" /> Rejected</Badge>;
       case 'Closed':
         return <Badge variant="outline" className="flex items-center gap-1 text-gray-500"><Archive className="w-3 h-3" /> Closed</Badge>;
       default:
@@ -163,7 +173,7 @@ const MyComplaints = () => {
                   <div className="text-sm">
                     <span className="font-medium text-gray-900 dark:text-gray-100">Department: </span>
                     <span className="text-gray-600 dark:text-gray-400">
-                      {complaint.department?.name || 'Auto-assigned'}
+                      {complaint.department?.name || 'Pending Assignment'}
                     </span>
                   </div>
                   {complaint.deadline && (

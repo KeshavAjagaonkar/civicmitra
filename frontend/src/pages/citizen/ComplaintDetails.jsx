@@ -422,7 +422,7 @@ const ComplaintDetails = () => {
               </div>
               <div className="flex justify-between items-center">
                 <strong>Department:</strong>
-                <span>{complaint.department?.name || 'Auto-assigned'}</span>
+                <span>{complaint.department?.name || 'Pending Assignment'}</span>
               </div>
               {(userRole === 'staff' || userRole === 'admin') && (
                 <div className="flex justify-between items-center">

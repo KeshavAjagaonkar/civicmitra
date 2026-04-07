@@ -210,4 +210,9 @@ html {
   .leaflet-popup-tip {
     @apply bg-white !important;
   }
+
+  /* Constrain Leaflet z-index so map tiles don't bleed above modals/dialogs */
+  .leaflet-container {
+    z-index: 0 !important;
+  }
 }

@@ -42,7 +42,8 @@ const Hero = () => {
   const [stats, setStats] = useState(null);
 
   useEffect(() => {
-    fetch('/api/complaints/public-stats')
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+    fetch(`${backendUrl}/api/complaints/public-stats`)
       .then(r => r.json())
       .then(d => { if (d.success) setStats(d.data); })
       .catch(() => {});
