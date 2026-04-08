@@ -56,6 +56,8 @@ const UnifiedLogin = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [slowRequest, setSlowRequest] = useState(false);
   const { request } = useApi();
   const [departments, setDepartments] = useState([]);
 
@@ -93,6 +95,10 @@ const UnifiedLogin = () => {
   };
 
   const onSubmit = async (data) => {
+    setIsSubmitting(true);
+    setSlowRequest(false);
+    // Show a "server is waking up" hint after 5 seconds
+    const slowTimer = setTimeout(() => setSlowRequest(true), 5000);
     try {
       let result;
       if (mode === 'login') {
@@ -107,11 +113,13 @@ const UnifiedLogin = () => {
           phone: data.phone,
           address: data.address,
           password: data.password,
+          // Role is sent inside userData now (backend only creates citizens via public register)
+          role: data.role || 'citizen',
         };
         if (data.role === 'worker' && data.department) {
           userData.department = data.department;
         }
-        result = await authRegister(userData, data.role || 'citizen');
+        result = await authRegister(userData);
         if (result.success) {
           toast({ title: "Registration Successful", description: "Welcome to CivicMitra!" });
         }
@@ -128,7 +136,11 @@ const UnifiedLogin = () => {
         }
       }
     } catch (error) {
-      // Errors handled by AuthContext
+      // Errors handled by AuthContext toast
+    } finally {
+      clearTimeout(slowTimer);
+      setIsSubmitting(false);
+      setSlowRequest(false);
     }
   };
 
@@ -269,7 +281,14 @@ const UnifiedLogin = () => {
               </div>
             )}
 
-            <Button type="submit" className="w-full h-12 text-base font-semibold" loading={authLoading}>
+            {slowRequest && (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 text-sm">
+                <svg className="h-4 w-4 shrink-0 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeOpacity=".3"/><path d="M21 12a9 9 0 00-9-9"/></svg>
+                <span>Server is waking up (free tier cold start) — please wait a moment...</span>
+              </div>
+            )}
+
+            <Button type="submit" className="w-full h-12 text-base font-semibold" disabled={isSubmitting} loading={isSubmitting}>
               {mode === 'login' ? 'Sign In' : 'Create Account'}
             </Button>
 

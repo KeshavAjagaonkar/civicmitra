@@ -2,6 +2,14 @@
 import React, { createContext, useReducer, useEffect, useMemo, useCallback } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 
+// Helper: fetch with a timeout so login/register never hangs forever (e.g. Render cold start)
+const fetchWithTimeout = (url, options, timeoutMs = 30000) => {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(url, { ...options, signal: controller.signal })
+    .finally(() => clearTimeout(id));
+};
+
 const initialState = {
   isAuthenticated: false,
   user: null,
@@ -195,22 +203,29 @@ export const AuthProvider = ({ children }) => {
     };
   }, [state.isAuthenticated, toast]);
 
-  // --- THIS IS THE CORRECTED FUNCTION ---
-  const login = useCallback(async (credentials) => { // Removed the 'role' parameter
+  const login = useCallback(async (credentials) => {
     try {
       dispatch({ type: 'AUTH_LOADING' });
 
       const base = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
-      const res = await fetch(`${base}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        // The 'role' is no longer sent. The backend will determine the role.
-        body: JSON.stringify(credentials), 
-      });
+      let res;
+      try {
+        res = await fetchWithTimeout(`${base}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(credentials),
+        }, 30000);
+      } catch (fetchErr) {
+        if (fetchErr.name === 'AbortError') {
+          throw new Error('Request timed out. The server may be starting up — please try again in a moment.');
+        }
+        throw new Error('Could not connect to server. Please check your internet connection.');
+      }
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.message || 'Login failed');
+        // Backend returns { error: '...' } or { message: '...' }
+        throw new Error(data.error || data.message || 'Login failed');
       }
 
       localStorage.setItem('token', data.token);
@@ -223,24 +238,33 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       dispatch({ type: 'LOGIN_ERROR', payload: { error: error.message } });
       toast({ title: "Login Failed", description: error.message, variant: "destructive" });
-      throw error; // Re-throw the error so the component knows it failed
+      throw error;
     }
   }, [toast]);
   
-  const register = useCallback(async (userData, role = 'citizen') => {
+  const register = useCallback(async (userData) => {
     try {
       dispatch({ type: 'AUTH_LOADING' });
 
       const base = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
-      const res = await fetch(`${base}/api/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...userData, role }), // Include role in the request
-      });
+      let res;
+      try {
+        res = await fetchWithTimeout(`${base}/api/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(userData),
+        }, 30000);
+      } catch (fetchErr) {
+        if (fetchErr.name === 'AbortError') {
+          throw new Error('Request timed out. The server may be starting up — please try again in a moment.');
+        }
+        throw new Error('Could not connect to server. Please check your internet connection.');
+      }
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.message || 'Registration failed');
+        // Backend returns { error: '...' } or { message: '...' }
+        throw new Error(data.error || data.message || 'Registration failed');
       }
 
       localStorage.setItem('token', data.token);
