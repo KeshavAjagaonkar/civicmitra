@@ -20,8 +20,8 @@ import { COMPLAINT_CATEGORIES, COMPLAINT_PRIORITIES, PRIORITY_CLASSES } from '@/
 
 // Schema matching backend requirements
 const complaintSchema = z.object({
-  title: z.string().min(1, { message: 'Title is required' }).max(100, { message: 'Title can not be more than 100 characters' }),
-  description: z.string().min(1, { message: 'Description is required' }).max(1000, { message: 'Description can not be more than 1000 characters' }),
+  title: z.string().min(5, { message: 'Title must be at least 5 characters' }).max(100, { message: 'Title can not be more than 100 characters' }),
+  description: z.string().min(20, { message: 'Description must be at least 20 characters' }).max(1000, { message: 'Description can not be more than 1000 characters' }),
   category: z.enum(COMPLAINT_CATEGORIES, { message: 'Please select a valid category' }),
   priority: z.enum(COMPLAINT_PRIORITIES, { message: 'Please select a priority level' }),
   department: z.string().optional(),
