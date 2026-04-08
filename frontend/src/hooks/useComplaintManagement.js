@@ -27,13 +27,11 @@ const useComplaintManagement = () => {
     fetchComplaints();
   }, [fetchComplaints]);
 
-  const updateComplaintStatus = async (complaintId, status) => {
+  const updateComplaintStatus = async (complaintId, status, rejectionReason = null) => {
     try {
-      const response = await request(`/api/complaints/${complaintId}/status`, {
-        method: 'PATCH',
-        body: JSON.stringify({ status }),
-        headers: { 'Content-Type': 'application/json' },
-      });
+      const body = { status };
+      if (rejectionReason) body.rejectionReason = rejectionReason;
+      const response = await request(`/api/complaints/${complaintId}/status`, 'PATCH', body);
       
       if (response?.success) {
         // Optimistically update the local state for a faster UI response
@@ -42,7 +40,7 @@ const useComplaintManagement = () => {
         ));
         return { success: true, data: response.data };
       }
-      return { success: false, error: response.message };
+      return { success: false, error: response?.message || 'Status update failed' };
     } catch (err) {
       return { success: false, error: err.message };
     }

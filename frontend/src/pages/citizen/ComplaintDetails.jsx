@@ -332,7 +332,12 @@ const ComplaintDetails = () => {
                 {(userRole === 'staff' || userRole === 'admin') ? (
                   // Terminal states have no valid transitions — show badge only
                   ['Rejected', 'Closed', 'Transferred'].includes(complaint.status) ? (
-                    <Badge variant={STATUS_BADGE_VARIANT[complaint.status] || 'secondary'}>{complaint.status}</Badge>
+                    <Badge variant={STATUS_BADGE_VARIANT[complaint.status] || 'secondary'}>
+                      {complaint.status}
+                      {complaint.status === 'Transferred' && (
+                        <span className="ml-1 text-xs opacity-70">(legacy)</span>
+                      )}
+                    </Badge>
                   ) : (
                     <Select value={currentStatus} onValueChange={handleStatusChange}>
                       <SelectTrigger className="w-[200px] glass-input">

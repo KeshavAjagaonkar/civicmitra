@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -8,58 +8,92 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/DropdownMenu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose, DialogTrigger } from '@/components/ui/Dialog';
 import {
-  Search, Filter, Eye, Edit, Trash2, Download, FileText, Clock, CheckCircle, AlertCircle, AlertTriangle, Loader2, MoreHorizontal, Sparkles
+  Search, Filter, Eye, Download, Loader2, MoreHorizontal, Sparkles, AlertTriangle, Ban
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import useComplaintManagement from '@/hooks/useComplaintManagement';
+import { VALID_TRANSITIONS } from '@/lib/constants';
 
 const ComplaintManagement = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { 
-    complaints, loading, error, refetch, updateComplaintStatus, deleteComplaint, stats
+    complaints, loading, error, refetch, updateComplaintStatus, stats
   } = useComplaintManagement();
   
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [actionLoading, setActionLoading] = useState({});
-  const [complaintToDelete, setComplaintToDelete] = useState(null);
+
+  // State for Reject as Spam dialog
+  const [spamTarget, setSpamTarget] = useState(null);   // the complaint to reject
+  const [spamReason, setSpamReason] = useState('');
   
   const filteredComplaints = useMemo(() => {
     return (complaints || []).filter(c => {
       const searchMatch = searchTerm === '' || 
         c.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.citizenId?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.department?.name.toLowerCase().includes(searchTerm.toLowerCase());
+        c.citizenId?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        c.department?.name?.toLowerCase().includes(searchTerm.toLowerCase());
       const statusMatch = statusFilter === 'all' || c.status === statusFilter;
       const priorityMatch = priorityFilter === 'all' || c.priority === priorityFilter;
       return searchMatch && statusMatch && priorityMatch;
     });
   }, [complaints, searchTerm, statusFilter, priorityFilter]);
 
-  const handleStatusUpdate = async (complaintId, newStatus) => {
-    setActionLoading(prev => ({ ...prev, [complaintId]: true }));
-    const result = await updateComplaintStatus(complaintId, newStatus);
+  // Generic status update — validates against VALID_TRANSITIONS
+  const handleStatusUpdate = async (complaint, newStatus) => {
+    const allowed = VALID_TRANSITIONS[complaint.status] || [];
+    if (!allowed.includes(newStatus)) {
+      toast({
+        title: 'Invalid Transition',
+        description: `Cannot move from "${complaint.status}" to "${newStatus}".`,
+        variant: 'destructive',
+      });
+      return;
+    }
+    setActionLoading(prev => ({ ...prev, [complaint._id]: true }));
+    const result = await updateComplaintStatus(complaint._id, newStatus);
     if (result.success) {
-      toast({ title: 'Success', description: 'Complaint status updated.' });
+      toast({ title: 'Success', description: `Status updated to "${newStatus}".` });
     } else {
       toast({ title: 'Error', description: result.error, variant: 'destructive' });
     }
-    setActionLoading(prev => ({ ...prev, [complaintId]: false }));
+    setActionLoading(prev => ({ ...prev, [complaint._id]: false }));
   };
 
-  const handleDelete = async () => {
-    if (!complaintToDelete) return;
-    setActionLoading(prev => ({ ...prev, [complaintToDelete._id]: true }));
-    const result = await deleteComplaint(complaintToDelete._id);
+  // Reject as Spam — requires a reason (≥10 chars), calls PATCH /status with Rejected
+  const handleRejectAsSpam = async () => {
+    if (!spamTarget) return;
+    if (!spamReason || spamReason.trim().length < 10) {
+      toast({ title: 'Reason required', description: 'Please enter at least 10 characters.', variant: 'destructive' });
+      return;
+    }
+
+    // Only possible if 'Rejected' is a valid next state
+    const allowed = VALID_TRANSITIONS[spamTarget.status] || [];
+    if (!allowed.includes('Rejected')) {
+      toast({
+        title: 'Cannot Reject',
+        description: `"${spamTarget.status}" complaints cannot be rejected (terminal state).`,
+        variant: 'destructive',
+      });
+      setSpamTarget(null);
+      setSpamReason('');
+      return;
+    }
+
+    setActionLoading(prev => ({ ...prev, [spamTarget._id]: true }));
+    const result = await updateComplaintStatus(spamTarget._id, 'Rejected', spamReason.trim());
     if (result.success) {
-      toast({ title: 'Success', description: 'Complaint deleted successfully.' });
+      toast({ title: 'Complaint Rejected', description: 'The complaint has been marked as rejected.' });
     } else {
       toast({ title: 'Error', description: result.error, variant: 'destructive' });
     }
-    setActionLoading(prev => ({ ...prev, [complaintToDelete._id]: false }));
-    setComplaintToDelete(null);
+    setActionLoading(prev => ({ ...prev, [spamTarget._id]: false }));
+    setSpamTarget(null);
+    setSpamReason('');
   };
   
   const getStatusVariant = (status) => ({ 'Submitted': 'secondary', 'In Progress': 'default', 'Resolved': 'outline', 'Closed': 'destructive' }[status] || 'secondary');
@@ -90,7 +124,7 @@ const ComplaintManagement = () => {
         <CardContent>
           <div className="grid gap-4 md:grid-cols-4">
             <Input placeholder="Search by title, citizen, dept..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="md:col-span-2" />
-            <Select value={statusFilter} onValueChange={setStatusFilter}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="all">All Statuses</SelectItem><SelectItem value="Submitted">Submitted</SelectItem><SelectItem value="In Progress">In Progress</SelectItem><SelectItem value="Resolved">Resolved</SelectItem><SelectItem value="Closed">Closed</SelectItem></SelectContent></Select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="all">All Statuses</SelectItem><SelectItem value="Submitted">Submitted</SelectItem><SelectItem value="Under Review">Under Review</SelectItem><SelectItem value="Needs Info">Needs Info</SelectItem><SelectItem value="In Progress">In Progress</SelectItem><SelectItem value="Resolved">Resolved</SelectItem><SelectItem value="Closed">Closed</SelectItem><SelectItem value="Rejected">Rejected</SelectItem></SelectContent></Select>
             <Select value={priorityFilter} onValueChange={setPriorityFilter}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="all">All Priorities</SelectItem><SelectItem value="High">High</SelectItem><SelectItem value="Medium">Medium</SelectItem><SelectItem value="Low">Low</SelectItem></SelectContent></Select>
           </div>
         </CardContent>
@@ -102,30 +136,37 @@ const ComplaintManagement = () => {
         <div className="text-center py-12 text-red-500"><AlertTriangle className="mx-auto h-12 w-12" /><p className="mt-4">{error}</p></div>
       ) : (
         <div className="space-y-4">
-          {filteredComplaints.map(c => (
-            <Card key={c._id} className="glass-card mb-4">
-              <CardContent className="pt-6">
-                <div className="flex justify-between items-start gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-4 mb-2">
-                      <Badge className={getPriorityColor(c.priority)}>{c.priority}</Badge>
-                      <Badge variant={getStatusVariant(c.status)}>{c.status}</Badge>
+          {filteredComplaints.map(c => {
+            const validNextStates = VALID_TRANSITIONS[c.status] || [];
+            const isTerminal = validNextStates.length === 0;
+
+            return (
+              <Card key={c._id} className="glass-card mb-4">
+                <CardContent className="pt-6">
+                  <div className="flex justify-between items-start gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-4 mb-2">
+                        <Badge className={getPriorityColor(c.priority)}>{c.priority}</Badge>
+                        <Badge variant={getStatusVariant(c.status)}>{c.status}</Badge>
+                        {isTerminal && (
+                          <span className="text-xs text-gray-400 italic">Terminal</span>
+                        )}
+                      </div>
+                      <h3
+                        className="font-semibold text-lg hover:text-blue-600 cursor-pointer transition-colors"
+                        onClick={() => navigate(`/admin/complaints/${c._id}`)}
+                      >
+                        {c.title}
+                      </h3>
+                      {c.aiSummary?.shortSummary && (
+                        <p className="text-sm text-blue-600 dark:text-blue-400 flex items-start gap-1 mt-1">
+                          <Sparkles className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                          <span className="italic">{c.aiSummary.shortSummary}</span>
+                        </p>
+                      )}
+                      <p className="text-sm text-gray-500 mt-1">In <span className="font-medium text-gray-700">{c.department?.name || 'N/A'}</span> by <span className="font-medium text-gray-700">{c.citizenId?.name || 'N/A'}</span> on {formatDate(c.createdAt)}</p>
                     </div>
-                    <h3
-                      className="font-semibold text-lg hover:text-blue-600 cursor-pointer transition-colors"
-                      onClick={() => navigate(`/admin/complaints/${c._id}`)}
-                    >
-                      {c.title}
-                    </h3>
-                    {c.aiSummary?.shortSummary && (
-                      <p className="text-sm text-blue-600 dark:text-blue-400 flex items-start gap-1 mt-1">
-                        <Sparkles className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
-                        <span className="italic">{c.aiSummary.shortSummary}</span>
-                      </p>
-                    )}
-                    <p className="text-sm text-gray-500 mt-1">In <span className="font-medium text-gray-700">{c.department?.name || 'N/A'}</span> by <span className="font-medium text-gray-700">{c.citizenId?.name || 'N/A'}</span> on {formatDate(c.createdAt)}</p>
-                  </div>
-                  <Dialog open={complaintToDelete?._id === c._id} onOpenChange={() => setComplaintToDelete(null)}>
+
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" disabled={actionLoading[c._id]}>
@@ -137,26 +178,85 @@ const ComplaintManagement = () => {
                           <Eye className="w-4 h-4 mr-2" />
                           View Details
                         </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => handleStatusUpdate(c._id, 'In Progress')}>Mark In Progress</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => handleStatusUpdate(c._id, 'Resolved')}>Mark Resolved</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => handleStatusUpdate(c._id, 'Closed')}>Mark Closed</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => navigate(`/admin/complaints/${c._id}/assign`)}>Assign Worker</DropdownMenuItem>
-                        <DialogTrigger asChild>
-                           <DropdownMenuItem className="text-red-500" onSelect={() => setComplaintToDelete(c)}>Delete</DropdownMenuItem>
-                        </DialogTrigger>
+
+                        {/* Dynamically show only valid next states — never hardcoded */}
+                        {validNextStates
+                          .filter(s => s !== 'Rejected') // Rejection has its own dedicated action below
+                          .map(nextStatus => (
+                            <DropdownMenuItem
+                              key={nextStatus}
+                              onSelect={() => handleStatusUpdate(c, nextStatus)}
+                            >
+                              Mark {nextStatus}
+                            </DropdownMenuItem>
+                          ))
+                        }
+
+                        <DropdownMenuItem onSelect={() => navigate(`/admin/complaints/${c._id}/assign`)}>
+                          Assign Worker
+                        </DropdownMenuItem>
+
+                        {/* Reject as Spam — only available when Rejected is a valid transition */}
+                        {validNextStates.includes('Rejected') && (
+                          <DropdownMenuItem
+                            className="text-red-500 focus:text-red-600"
+                            onSelect={() => { setSpamTarget(c); setSpamReason(''); }}
+                          >
+                            <Ban className="w-4 h-4 mr-2" />
+                            Reject / Mark Spam
+                          </DropdownMenuItem>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
-                     <DialogContent>
-                        <DialogHeader><DialogTitle>Delete Complaint?</DialogTitle><DialogDescription>Permanently delete "{complaintToDelete?.title}". This cannot be undone.</DialogDescription></DialogHeader>
-                        <DialogFooter><DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose><Button variant="destructive" onClick={handleDelete} loading={actionLoading[complaintToDelete?._id]}>Confirm Delete</Button></DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
+
+      {/* Reject as Spam dialog — separate from the complaint list loop to avoid nested Dialog issues */}
+      <Dialog open={!!spamTarget} onOpenChange={(open) => { if (!open) { setSpamTarget(null); setSpamReason(''); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Ban className="w-5 h-5 text-red-500" />
+              Reject Complaint
+            </DialogTitle>
+            <DialogDescription>
+              Rejecting <strong>"{spamTarget?.title}"</strong>. The complaint will be marked as Rejected and the citizen will be notified. This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <label className="block text-sm font-medium mb-1">
+              Reason <span className="text-red-500">*</span>
+              <span className="text-gray-400 font-normal"> (min 10 characters)</span>
+            </label>
+            <textarea
+              className="w-full border rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-red-400 focus:outline-none resize-none"
+              rows={3}
+              placeholder="e.g. Duplicate complaint, outside jurisdiction, spam submission..."
+              value={spamReason}
+              onChange={e => setSpamReason(e.target.value)}
+            />
+            <p className="text-xs text-gray-400 mt-1">{spamReason.trim().length}/10 minimum characters</p>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </DialogClose>
+            <Button
+              variant="destructive"
+              onClick={handleRejectAsSpam}
+              disabled={spamReason.trim().length < 10 || actionLoading[spamTarget?._id]}
+            >
+              {actionLoading[spamTarget?._id] ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Ban className="h-4 w-4 mr-2" />}
+              Confirm Reject
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

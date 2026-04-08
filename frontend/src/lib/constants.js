@@ -29,7 +29,7 @@ export const COMPLAINT_STATUSES = [
 ];
 
 // Terminal states — no further transitions allowed
-export const TERMINAL_STATUSES = ['Rejected', 'Closed', 'Transferred'];
+export const TERMINAL_STATUSES = ['Rejected', 'Closed'];
 
 // Active statuses — complaint is still open/actionable
 export const ACTIVE_STATUSES = ['Submitted', 'Under Review', 'Needs Info', 'In Progress', 'Reopened'];
@@ -67,13 +67,13 @@ export const PRIORITY_CLASSES = {
  * Used by the status dropdown to show only legal next states.
  */
 export const VALID_TRANSITIONS = {
-  'Submitted':     ['Under Review', 'Rejected', 'In Progress', 'Transferred'],
-  'Under Review':  ['Needs Info', 'In Progress', 'Rejected', 'Transferred'],
+  'Submitted':     ['Under Review', 'Rejected', 'In Progress'],
+  'Under Review':  ['Needs Info', 'In Progress', 'Rejected'],
   'Needs Info':    ['Under Review', 'Rejected'],
   'In Progress':   ['Resolved', 'Under Review'],
   'Resolved':      ['Closed', 'Reopened'],
   'Reopened':      ['In Progress', 'Rejected'],
-  'Transferred':   [],
+  'Transferred':   [],  // legacy — historical data only, no new transitions
   'Rejected':      [],
   'Closed':        [],
 };

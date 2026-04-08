@@ -189,26 +189,46 @@ exports.getComplaintById = asyncHandler(async (req, res, next) => {
 });
 
 // Valid state transitions — enforced to prevent illegal status jumps.
+// NOTE: 'Transferred' is intentionally removed as a transition target.
+// To route a complaint to another department, use PATCH /:id/assign instead.
 const VALID_TRANSITIONS = {
-  'Submitted':     ['Under Review', 'Rejected', 'In Progress', 'Transferred'],
-  'Under Review':  ['Needs Info', 'In Progress', 'Rejected', 'Transferred'],
+  'Submitted':     ['Under Review', 'Rejected', 'In Progress'],
+  'Under Review':  ['Needs Info', 'In Progress', 'Rejected'],
   'Needs Info':    ['Under Review', 'Rejected'],
   'In Progress':   ['Resolved', 'Under Review'],
   'Resolved':      ['Closed', 'Reopened'],
   'Reopened':      ['In Progress', 'Rejected'],
-  'Transferred':   [],  // terminal from source dept perspective
+  'Transferred':   [],  // legacy terminal — kept for historical data only
   'Rejected':      [],  // terminal
   'Closed':        [],  // terminal
 };
 
-// @desc    Update complaint status by Staff/Admin
+// @desc    Update complaint status
 // @route   PATCH /api/complaints/:id/status
-// @access  Private (Staff, Admin)
+// @access  Private (Staff, Admin — and Citizen for Resolved→Closed/Reopened on own complaint)
 exports.updateComplaintStatus = asyncHandler(async (req, res, next) => {
   const { status, rejectionReason, notes } = req.body;
 
   let complaint = await Complaint.findById(req.params.id);
   if (!complaint) { return next(new ErrorResponse(`Complaint not found`, 404)); }
+
+  const isCitizen = req.user.role === 'citizen';
+
+  // --- Citizen guard: may only accept/dispute their own resolved complaint ---
+  if (isCitizen) {
+    const isOwner = complaint.citizenId.toString() === req.user.id;
+    if (!isOwner) {
+      return next(new ErrorResponse('Not authorized to update this complaint', 403));
+    }
+    // Citizens can only do Resolved → Closed (accept) or Resolved → Reopened (dispute)
+    const citizenAllowed = ['Closed', 'Reopened'];
+    if (complaint.status !== 'Resolved' || !citizenAllowed.includes(status)) {
+      return next(new ErrorResponse(
+        'You can only accept (Close) or dispute (Reopen) a resolved complaint.',
+        403
+      ));
+    }
+  }
 
   // Validate the state transition
   const allowedNext = VALID_TRANSITIONS[complaint.status] || [];
@@ -228,7 +248,10 @@ exports.updateComplaintStatus = asyncHandler(async (req, res, next) => {
   }
 
   const timelineNote = notes?.trim() ||
-    (status === 'Rejected' ? `Rejected: ${rejectionReason}` : `Status changed to ${status} by ${req.user.role}.`);
+    (status === 'Rejected' ? `Rejected: ${rejectionReason}` :
+     status === 'Closed'   ? `Accepted and closed by citizen.` :
+     status === 'Reopened' ? `Citizen disputed the resolution. Reopened for review.` :
+     `Status changed to ${status} by ${req.user.role}.`);
 
   complaint.timeline.push({
     action: status,
